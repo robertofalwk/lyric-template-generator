@@ -1,0 +1,7 @@
+stable-ts
+openai-whisper
+librosa
+soundfile
+demucs
+torch
+torchaudio

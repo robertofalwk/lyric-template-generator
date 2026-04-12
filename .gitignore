@@ -1,0 +1,25 @@
+# Next.js
+node_modules
+.next
+dist
+build
+coverage
+
+# Python
+worker/venv
+__pycache__
+*.pyc
+
+# Project Storage (Private)
+storage/
+public/uploads/
+public/exports/
+
+# Env & Logs
+.env
+.env.local
+*.log
+.DS_Store
+
+# Remotion
+remotion/bundle
