@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Timeline, Segment } from '@/types';
-import { Clock, Scissors, ListRestart, Merge } from 'lucide-react';
+import { Timeline, Segment } from '@/src/schemas';
+import { Clock, Scissors, ListRestart, Merge, SplitSquareVertical, GripVertical, ChevronRight } from 'lucide-react';
 
 interface TimelineEditorProps {
     timeline: Timeline;
@@ -12,71 +12,82 @@ interface TimelineEditorProps {
 
 export const TimelineEditor: React.FC<TimelineEditorProps> = ({ timeline, onChange, currentTimeMs }) => {
     
-    const adjustGlobalOffset = (ms: number) => {
-        const newTimeline = {
-            ...timeline,
-            segments: timeline.segments.map(s => ({
-                ...s,
-                startMs: s.startMs + ms,
-                endMs: s.endMs + ms,
-                words: s.words.map(w => ({
-                    ...w,
-                    startMs: w.startMs + ms,
-                    endMs: w.endMs + ms
-                }))
-            }))
-        };
-        onChange(newTimeline);
-    };
-
-    const updateSegmentTiming = (id: string, startMs: number, endMs: number) => {
-        const newTimeline = {
-            ...timeline,
-            segments: timeline.segments.map(s => 
-                s.id === id ? { ...s, startMs, endMs } : s
-            )
-        };
-        onChange(newTimeline);
-    };
-
     return (
-        <div className="flex flex-col gap-4 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
-            <div className="flex items-center justify-between underline-offset-4 mb-2">
-                <span className="text-sm font-bold text-gray-400">OFFSET GLOBAL</span>
+        <div className="flex flex-col h-full bg-zinc-950/50 rounded-2xl border border-white/5 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/20 shrink-0">
+                <div className="flex items-center gap-2">
+                    <ListRestart size={14} className="text-purple-500" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Timeline Blocks</span>
+                </div>
                 <div className="flex gap-2">
-                    <button onClick={() => adjustGlobalOffset(-100)} className="px-2 py-1 bg-gray-800 rounded text-xs">-100ms</button>
-                    <button onClick={() => adjustGlobalOffset(100)} className="px-2 py-1 bg-gray-800 rounded text-xs">+100ms</button>
+                    <button className="px-3 py-1 bg-zinc-900 hover:bg-zinc-800 text-[10px] font-bold rounded-full border border-zinc-800 transition-colors">
+                        Auto-Split
+                    </button>
+                    <button className="px-3 py-1 bg-zinc-900 hover:bg-zinc-800 text-[10px] font-bold rounded-full border border-zinc-800 transition-colors">
+                        Re-Sync
+                    </button>
                 </div>
             </div>
 
-            <div className="max-h-96 overflow-y-auto flex flex-col gap-2 pr-2 custom-scrollbar">
-                {timeline.segments.map((seg) => (
-                    <div 
-                        key={seg.id} 
-                        className={`p-3 rounded-lg border flex flex-col gap-2 transition-colors ${
-                            currentTimeMs >= seg.startMs && currentTimeMs <= seg.endMs 
-                            ? 'bg-purple-900/20 border-purple-500/50' 
-                            : 'bg-gray-800/40 border-gray-700'
-                        }`}
-                    >
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono">
-                            <span>{(seg.startMs / 1000).toFixed(2)}s</span>
-                            <div className="flex gap-2">
-                                <button className="hover:text-purple-400"><Scissors size={12} /></button>
-                                <button className="hover:text-purple-400"><Merge size={12} /></button>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3">
+                {timeline.segments.map((seg, idx) => {
+                    const isActive = currentTimeMs >= seg.startMs && currentTimeMs <= seg.endMs;
+                    
+                    return (
+                        <div 
+                            key={seg.id} 
+                            className={`group rounded-xl border transition-all duration-300 ${
+                                isActive 
+                                ? 'bg-purple-500/10 border-purple-500/40 shadow-lg shadow-purple-500/5 translate-x-1' 
+                                : 'bg-zinc-900/40 border-white/5 hover:border-white/10'
+                            }`}
+                        >
+                            <div className="flex items-start p-4 gap-4">
+                                <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-purple-500 animate-pulse' : 'bg-zinc-700'}`} />
+                                
+                                <div className="flex-1 flex flex-col gap-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-500">
+                                            <span className="bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">{(seg.startMs / 1000).toFixed(2)}s</span>
+                                            <ChevronRight size={10} />
+                                            <span className="bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">{(seg.endMs / 1000).toFixed(2)}s</span>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-md transition-all">
+                                                <Merge size={14} />
+                                            </button>
+                                            <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-md transition-all">
+                                                <SplitSquareVertical size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <textarea 
+                                        className="bg-transparent text-sm text-zinc-200 outline-none focus:text-white w-full resize-none leading-relaxed font-medium"
+                                        rows={1}
+                                        value={seg.text}
+                                        onChange={(e) => {
+                                            const newSegs = [...timeline.segments];
+                                            newSegs[idx] = { ...seg, text: e.target.value };
+                                            onChange({ ...timeline, segments: newSegs });
+                                        }}
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1 items-center justify-center text-zinc-700">
+                                    <GripVertical size={16} className="cursor-grab active:cursor-grabbing hover:text-zinc-500" />
+                                </div>
                             </div>
-                            <span>{(seg.endMs / 1000).toFixed(2)}s</span>
                         </div>
-                        <input 
-                            className="bg-transparent text-sm text-gray-200 outline-none focus:text-white"
-                            value={seg.text}
-                            onChange={(e) => {
-                                const newSegs = timeline.segments.map(s => s.id === seg.id ? {...s, text: e.target.value} : s);
-                                onChange({...timeline, segments: newSegs});
-                            }}
-                        />
-                    </div>
-                ))}
+                    );
+                })}
+            </div>
+            
+            <div className="p-4 bg-black/40 border-t border-white/5">
+                <div className="flex justify-between items-center px-2">
+                    <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Total Slices: {timeline.segments.length}</span>
+                    <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Global Drift: +0ms</span>
+                </div>
             </div>
         </div>
     );
