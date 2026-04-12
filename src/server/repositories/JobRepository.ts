@@ -1,47 +1,63 @@
-import fs from 'fs/promises';
-import path from 'path';
+import db from '../database/db';
 import { RenderJob, RenderJobSchema } from '@/src/schemas';
 
-const JOBS_PATH = path.join(process.cwd(), 'storage', 'jobs.json');
-
 export class JobRepository {
-    private async ensureFile() {
-        try {
-            await fs.access(JOBS_PATH);
-        } catch {
-            await fs.writeFile(JOBS_PATH, JSON.stringify([]));
-        }
-    }
-
     async findAll(): Promise<RenderJob[]> {
-        await this.ensureFile();
-        const data = await fs.readFile(JOBS_PATH, 'utf-8');
-        const raw = JSON.parse(data);
-        return raw.map((j: any) => RenderJobSchema.parse(j));
+        const stmt = db.prepare('SELECT * FROM jobs');
+        const rows = stmt.all() as any[];
+        return rows.map(this.mapRowToJob);
     }
 
     async findById(id: string): Promise<RenderJob | null> {
-        const jobs = await this.findAll();
-        return jobs.find(j => j.id === id) || null;
+        const stmt = db.prepare('SELECT * FROM jobs WHERE id = ?');
+        const row = stmt.get(id) as any;
+        if (!row) return null;
+        return this.mapRowToJob(row);
     }
 
     async save(job: RenderJob): Promise<void> {
-        const jobs = await this.findAll();
         const validated = RenderJobSchema.parse(job);
-        const index = jobs.findIndex(j => j.id === job.id);
-        
-        if (index > -1) {
-            jobs[index] = validated;
-        } else {
-            jobs.push(validated);
-        }
-        
-        await fs.writeFile(JOBS_PATH, JSON.stringify(jobs, null, 2));
+        const stmt = db.prepare(`
+            INSERT OR REPLACE INTO jobs (
+                id, projectId, type, status, progress, 
+                createdAt, startedAt, finishedAt, 
+                outputPath, logs, errorMessage
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        stmt.run(
+            validated.id,
+            validated.projectId,
+            validated.type,
+            validated.status,
+            validated.progress,
+            validated.createdAt,
+            validated.startedAt || null,
+            validated.finishedAt || null,
+            validated.outputPath || null,
+            JSON.stringify(validated.logs),
+            validated.errorMessage || null
+        );
     }
 
     async getByProjectId(projectId: string): Promise<RenderJob[]> {
-        const jobs = await this.findAll();
-        return jobs.filter(j => j.projectId === projectId);
+        const stmt = db.prepare('SELECT * FROM jobs WHERE projectId = ?');
+        const rows = stmt.all(projectId) as any[];
+        return rows.map(this.mapRowToJob);
+    }
+
+    async findNextQueued(): Promise<RenderJob | null> {
+        const stmt = db.prepare('SELECT * FROM jobs WHERE status = "queued" LIMIT 1');
+        const row = stmt.get() as any;
+        if (!row) return null;
+        return this.mapRowToJob(row);
+    }
+
+    private mapRowToJob(row: any): RenderJob {
+        return RenderJobSchema.parse({
+            ...row,
+            logs: JSON.parse(row.logs)
+        });
     }
 }
 

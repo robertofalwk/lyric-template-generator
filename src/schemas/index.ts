@@ -84,6 +84,7 @@ export const ProjectSchema = z.object({
 export const RenderJobSchema = z.object({
     id: z.string().uuid(),
     projectId: z.string().uuid(),
+    type: z.enum(['alignment', 'render']).default('render'),
     status: z.enum(['queued', 'processing', 'completed', 'failed']),
     progress: z.number().min(0).max(100).default(0),
     createdAt: z.string().datetime(),

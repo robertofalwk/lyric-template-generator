@@ -1,42 +1,60 @@
-import fs from 'fs/promises';
-import path from 'path';
+import db from '../database/db';
 import { Project, ProjectSchema } from '@/src/schemas';
 
-const PROJECTS_PATH = path.join(process.cwd(), 'storage', 'projects.json');
-
 export class ProjectRepository {
-    private async ensureFile() {
-        try {
-            await fs.access(PROJECTS_PATH);
-        } catch {
-            await fs.writeFile(PROJECTS_PATH, JSON.stringify([]));
-        }
-    }
-
     async findAll(): Promise<Project[]> {
-        await this.ensureFile();
-        const data = await fs.readFile(PROJECTS_PATH, 'utf-8');
-        const raw = JSON.parse(data);
-        return raw.map((p: any) => ProjectSchema.parse(p));
+        const stmt = db.prepare('SELECT * FROM projects');
+        const rows = stmt.all() as any[];
+        return rows.map(this.mapRowToProject);
     }
 
     async findById(id: string): Promise<Project | null> {
-        const projects = await this.findAll();
-        return projects.find(p => p.id === id) || null;
+        const stmt = db.prepare('SELECT * FROM projects WHERE id = ?');
+        const row = stmt.get(id) as any;
+        if (!row) return null;
+        return this.mapRowToProject(row);
     }
 
     async save(project: Project): Promise<void> {
-        const projects = await this.findAll();
         const validated = ProjectSchema.parse(project);
-        const index = projects.findIndex(p => p.id === project.id);
-        
-        if (index > -1) {
-            projects[index] = validated;
-        } else {
-            projects.push(validated);
-        }
-        
-        await fs.writeFile(PROJECTS_PATH, JSON.stringify(projects, null, 2));
+        const stmt = db.prepare(`
+            INSERT OR REPLACE INTO projects (
+                id, title, createdAt, updatedAt, audioOriginalPath, 
+                audioProcessedPath, lyricsRaw, lyricsNormalized, 
+                selectedTemplateId, aspectRatio, status, 
+                alignmentStatus, renderStatus, exportFormats, 
+                settings, latestTimelinePath, timeline
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        stmt.run(
+            validated.id,
+            validated.title,
+            validated.createdAt,
+            validated.updatedAt,
+            validated.audioOriginalPath || null,
+            validated.audioProcessedPath || null,
+            validated.lyricsRaw,
+            validated.lyricsNormalized || null,
+            validated.selectedTemplateId,
+            validated.aspectRatio,
+            validated.status,
+            validated.alignmentStatus,
+            validated.renderStatus,
+            JSON.stringify(validated.exportFormats),
+            JSON.stringify(validated.settings),
+            validated.latestTimelinePath || null,
+            validated.timeline ? JSON.stringify(validated.timeline) : null
+        );
+    }
+
+    private mapRowToProject(row: any): Project {
+        return ProjectSchema.parse({
+            ...row,
+            exportFormats: JSON.parse(row.exportFormats),
+            settings: JSON.parse(row.settings),
+            timeline: row.timeline ? JSON.parse(row.timeline) : undefined
+        });
     }
 }
 

@@ -185,7 +185,7 @@ export default function Dashboard() {
                         <div className={`flex-[1.5] relative ${view === 'editor' ? 'hidden md:block' : 'block'}`}>
                             {project && timeline && activeTemplate ? (
                                 <RemotionPlayerWrapper 
-                                    audioUrl={project.audioOriginalPath}
+                                    audioUrl={`/api/projects/${project.id}/audio`}
                                     timeline={timeline}
                                     template={activeTemplate}
                                 />

@@ -1,54 +1,59 @@
-# Lyric Template Generator (v2 Robust Refactor) 🎬
+# Lyric Lab (Professional Video Suite) 🎬
 
-Ambiente de produção local para geração automática de lyrics de alta fidelidade.
+Plataforma industrial para geração de lyric videos sincronizados.
 
-## O que há de novo na v2:
-- **Storage Privado:** Uploads e projetos agora ficam em `/storage`, fora do cache público.
-- **Pipeline de Áudio:** Suporte a Isolamento Vocal (Demucs) e alinhamento via Stable-TS.
-- **Render Worker:** Exportação assíncrona com fila de jobs local (Queue).
-- **Editor Manual:** Interface para ajuste fino de offsets e edição de texto sincronizado.
-- **Templates Pro:** 5 templates configuráveis via JSON com suporte a blur, stroke e glow.
-- **Formatos:** Exportação de MP4 (H.264), SRT e ASS.
+## 🏗️ Arquitetura
+- **Web Frontend:** Next.js 14 + Tailwind CSS.
+- **Service Layer:** Domain-Driven Design (DDD) com serviços isolados.
+- **Database:** SQLite local (via `better-sqlite3`) para persistência robusta.
+- **Worker Engine:** Processo isolado que gerencia filas de alinhamento e renderização.
+- **Video Engine:** Remotion distribuído com renderização real (MP4).
+- **Audio Intelligence:** Python + Stable-TS (Whisper) para sincronia perfeita.
 
-## Requisitos de Sistema
-- **Node.js:** 18+
-- **Python:** 3.9+ (com GPU recomendada para Demucs)
-- **FFmpeg:** Obrigatório no PATH do sistema.
+## 🚀 Como Rodar
 
-## Instalação e Setup
+### 1. Pré-requisitos
+- Node.js 18+
+- Python 3.9+
+- **FFmpeg** instalado e no PATH (necessário para Remotion e Probe).
 
-### 1. Backend e Remotion
+### 2. Instalação
 ```bash
 npm install
-```
-
-### 2. Ambiente de Processamento (Python)
-```bash
 cd worker
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
+pip install stable-ts
 ```
 
-### 3. Rodar a Aplicação
+### 3. Configuração
+Crie o seu `.env` baseado no `.env.example`.
+
+### 4. Execução (Desenvolvimento)
+Para rodar tanto o servidor web quanto o worker de processamento:
 ```bash
-npm run dev
+npm run dev:all
 ```
 
-## Arquitetura de Pipeline
-1. **Upload:** O áudio é validado e salvo em `storage/projects/{id}/audio.mp3`.
-2. **Alignment:** O worker Python processa o áudio (com isolamento opcional) e gera `timeline.json`.
-3. **Drafting:** O usuário ajusta o template e timings no editor visual.
-4. **Export:** Um Job é criado na fila. O renderizador Remotion processa o vídeo no background.
-5. **Finalize:** O vídeo é movido para `public/exports` e legendas SRT são geradas no storage.
+Ou separadamente:
+```bash
+npm run dev      # Web Server na porta 3000
+npm run worker   # Processador de Jobs (Alinhamento e Render)
+```
 
-## Configuração de Templates
-Edite `config/templates.ts` para criar seus próprios estilos. Suporta:
-- `highlightMode`: 'word' (karaoke) ou 'line' (tradicional).
-- `backgroundMode`: blur, color ou transparent.
-- `animationIn/Out`: zoom, fade, slide.
+## 📂 Fluxo Profissional de Dados
+1. **Upload:** Áudio validado via `ffprobe` (MIME, tamanho, duração).
+2. **Alignment:** Criado um Job asíncrono. O `worker` dispara o script Python.
+3. **Editor:** O usuário refina a timeline e o template no frontend.
+4. **Preview:** Streaming seguro via rota de API (suporta seeking/range).
+5. **Render:** Criado um Job de render. O `worker` faz o bundle e gera o MP4 real.
 
-## Troubleshooting
-- **FFmpeg não encontrado:** Certifique-se de que `ffmpeg -version` funciona no seu shell.
-- **Python Error:** Verifique se as dependências do `requirements.txt` estão instaladas no venv ativo.
-- **Render Lento:** A renderização de vídeo consome CPU/GPU intensamente.
+## 📦 Scripts Disponíveis
+- `npm run dev:all`: Sobe tudo (Web + Worker).
+- `npm run worker`: Inicia o processador de tarefas.
+- `npm run typecheck`: Validação rigorosa de tipos TypeScript.
+- `npm run render`: Teste de renderização manual via CLI.
+
+## 🛡️ Segurança e Robustez
+- **Sem Caminhos Absolutos:** O frontend nunca vê caminhos de arquivo do servidor.
+- **Fila de Jobs:** Processamento pesado não afeta a latência da API.
+- **Validação com Zod:** Fonte única de verdade para tipos e schemas.
+- **Atomic Writes:** O worker Python escreve arquivos temporários para evitar corrupção.

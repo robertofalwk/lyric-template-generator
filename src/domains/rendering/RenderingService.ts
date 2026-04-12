@@ -1,4 +1,4 @@
-import { renderMedia, resolveStdio } from '@remotion/renderer';
+import { renderMedia, bundle } from '@remotion/renderer';
 import { Project } from '@/src/schemas';
 import path from 'path';
 import fs from 'fs/promises';
@@ -12,55 +12,58 @@ export class RenderingService {
         const outputDir = path.join(process.cwd(), 'storage', 'renders', jobId);
         await fs.mkdir(outputDir, { recursive: true });
         
-        const outputPath = path.join(outputDir, 'output.mp4');
-        const publicPath = path.join(process.cwd(), 'public', 'exports', `${jobId}.mp4`);
-        await fs.mkdir(path.dirname(publicPath), { recursive: true });
+        const mp4Path = path.join(outputDir, 'video.mp4');
+        const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
 
-        onProgress(10, 'Preparing bundle...');
-
-        // In a real production deployment, we would bundle the project first.
-        // For this local specialized tool, we'll assume the compositions are available.
-        // Note: For Remotion to work in a headless environment, we'd use `bundle()` first.
+        onProgress(5, 'Bundling Remotion project...');
         
-        try {
-            // This is a simplified call. Real world needs a bundled entry point.
-            // But we'll mock the internal process for the sake of the refactor flow.
-            console.log(`[RenderingService] Starting render for project ${project.id}`);
-            
-            // Mocking the time-intensive process
-            for (let i = 20; i <= 90; i += 10) {
-                await new Promise(r => setTimeout(r, 1000));
-                onProgress(i, `Rendering frames... ${i}%`);
-            }
+        const bundleLocation = await bundle({
+            entryPoint,
+            // Add any other bundling options if needed
+        });
 
-            // In reality, we'd use:
-            /*
+        onProgress(20, 'Starting render engine...');
+
+        try {
             await renderMedia({
                 composition: {
                     id: 'LyricVideo',
                     width: project.aspectRatio === '9:16' ? 1080 : 1920,
                     height: project.aspectRatio === '9:16' ? 1920 : 1080,
                     fps: 30,
-                    durationInFrames: 1800, // will depend on audio
+                    durationInFrames: this.calculateDuration(project),
                 },
-                outputLocation: outputPath,
+                serveUrl: bundleLocation,
+                outputLocation: mp4Path,
                 inputProps: { 
-                    audioSrc: project.audioPath, 
+                    audioSrc: `http://localhost:3000/api/projects/${project.id}/audio`, // External URL or local file
                     timeline: project.timeline,
                     template: project.template
                 },
-                codec: 'h264'
+                codec: 'h264',
+                onProgress: ({ progress }) => {
+                    const mappedProgress = 20 + (progress * 80);
+                    onProgress(Math.floor(mappedProgress), `Rendering: ${Math.floor(progress * 100)}%`);
+                }
             });
-            */
             
-            // Dummy file creation for the sake of the demo flow if real render isn't setup
-            await fs.writeFile(outputPath, 'Dummy Video Content');
-            await fs.copyFile(outputPath, publicPath);
+            // Move to public for export
+            const publicExport = path.join(process.cwd(), 'public', 'exports', `${jobId}.mp4`);
+            await fs.mkdir(path.dirname(publicExport), { recursive: true });
+            await fs.copyFile(mp4Path, publicExport);
 
-            onProgress(100, 'Render complete.');
+            return `/exports/${jobId}.mp4`;
         } catch (error: any) {
-            throw new Error(`Render failed: ${error.message}`);
+            console.error('[RenderingService] Error:', error);
+            throw error;
         }
+    }
+
+    private calculateDuration(project: Project): number {
+        if (!project.timeline || project.timeline.segments.length === 0) return 900; // 30s default
+        const lastSegments = project.timeline.segments;
+        const lastEndMs = Math.max(...lastSegments.map(s => s.endMs));
+        return Math.ceil((lastEndMs / 1000) * 30) + 60; // +2s buffer
     }
 }
 
