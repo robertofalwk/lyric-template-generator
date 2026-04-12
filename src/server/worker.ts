@@ -8,24 +8,34 @@ async function processQueue() {
     console.log('👷 Worker started. Polling for jobs...');
 
     while (true) {
+        let currentJob = null;
         try {
-            const job = await jobRepository.findNextQueued();
+            currentJob = await jobRepository.findNextQueued();
 
-            if (job) {
-                console.log(`[Job ${job.id}] Picking up ${job.type} job...`);
-                await jobRepository.save({ ...job, status: 'processing', startedAt: new Date().toISOString() });
+            if (currentJob) {
+                console.log(`[Job ${currentJob.id}] Picking up ${currentJob.type} job...`);
+                
+                // Mark as processing
+                currentJob.status = 'processing';
+                currentJob.startedAt = new Date().toISOString();
+                currentJob.logs = [...currentJob.logs, `Started processing ${currentJob.type} at ${currentJob.startedAt}`];
+                await jobRepository.save(currentJob);
 
-                const project = await projectRepository.findById(job.projectId);
+                const project = await projectRepository.findById(currentJob.projectId);
                 if (!project) throw new Error('Project not found');
 
-                if (job.type === 'alignment') {
+                if (currentJob.type === 'alignment') {
                     const timelinePath = path.join(process.cwd(), 'storage', 'projects', project.id, 'timeline.json');
                     
                     const timeline = await alignmentService.align(
                         project.audioOriginalPath,
                         project.lyricsRaw,
                         project.settings,
-                        timelinePath
+                        timelinePath,
+                        (log) => {
+                            // Optional: Update logs every few seconds or per segment
+                            // For SQLite local, we'll keep it simple
+                        }
                     );
 
                     await projectRepository.save({
@@ -36,37 +46,67 @@ async function processQueue() {
                     });
 
                     await jobRepository.save({
-                        ...job,
+                        ...currentJob,
                         status: 'completed',
                         progress: 100,
                         finishedAt: new Date().toISOString(),
-                        logs: [...job.logs, 'Alignment completed successfully']
+                        logs: [...currentJob.logs, 'Alignment completed successfully']
                     });
 
-                } else if (job.type === 'render') {
-                    const outputPath = await renderingService.render(project, job.id, (progress, log) => {
-                        // In-process log update (might be too frequent for SQL, but okay for local)
-                        jobRepository.save({ ...job, progress, status: 'processing' });
+                } else if (currentJob.type === 'render') {
+                    const outputPath = await renderingService.render(project, currentJob.id, async (progress, log) => {
+                        if (currentJob) {
+                            // Update progress periodically
+                            currentJob.progress = progress;
+                            if (log) currentJob.logs = [...currentJob.logs, log];
+                            await jobRepository.save(currentJob);
+                        }
+                    });
+
+                    await projectRepository.save({
+                        ...project,
+                        renderStatus: 'completed'
                     });
 
                     await jobRepository.save({
-                        ...job,
+                        ...currentJob,
                         status: 'completed',
                         progress: 100,
                         outputPath,
                         finishedAt: new Date().toISOString(),
-                        logs: [...job.logs, 'Render completed successfully']
+                        logs: [...currentJob.logs, 'Render completed successfully']
                     });
                 }
+                
+                console.log(`[Job ${currentJob.id}] Status: COMPLETED`);
             }
         } catch (error: any) {
-            console.error('Worker Error:', error.message);
-            // Handle job failure
-            // We'd need the current job ID here
+            console.error(`[Worker Error] ${error.message}`);
+            if (currentJob) {
+                await jobRepository.save({
+                    ...currentJob,
+                    status: 'failed',
+                    errorMessage: error.message,
+                    finishedAt: new Date().toISOString(),
+                    logs: [...currentJob.logs, `Error: ${error.message}`]
+                });
+
+                // Also update project to failed state
+                const project = await projectRepository.findById(currentJob.projectId);
+                if (project) {
+                    if (currentJob.type === 'alignment') {
+                        await projectRepository.save({ ...project, alignmentStatus: 'failed', status: 'failed' });
+                    } else {
+                        await projectRepository.save({ ...project, renderStatus: 'failed' });
+                    }
+                }
+            }
         }
 
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 2000));
     }
 }
 
-processQueue();
+processQueue().catch(err => {
+    console.error('Fatal Worker Loop Error:', err);
+});

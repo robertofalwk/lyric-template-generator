@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 import { RemotionPlayerWrapper } from '@/components/RemotionPlayer';
 import { TimelineEditor } from '@/components/TimelineEditor';
 import { Project, Timeline, RenderJob, Template } from '@/src/schemas';
 import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
-import { Download, SlidersHorizontal, Layers, PlayCircle, Loader2, CheckCircle2, Wand2, Info } from 'lucide-react';
+import { Download, SlidersHorizontal, Layers, PlayCircle, Loader2, CheckCircle2, Wand2, Info, AlertCircle } from 'lucide-react';
 
 export default function Dashboard() {
     const [project, setProject] = useState<Project | null>(null);
@@ -19,21 +19,45 @@ export default function Dashboard() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Fetch refreshed project & timeline
+    const refreshProject = useCallback(async (id: string) => {
+        try {
+            const res = await fetch(`/api/projects/${id}`);
+            const updated = await res.json();
+            setProject(updated);
+            if (updated.timeline) {
+                setTimeline(updated.timeline);
+            }
+        } catch (err) {
+            console.error('Failed to refresh project:', err);
+        }
+    }, []);
+
     // Polling for job status
     useEffect(() => {
-        let timer: any;
-        if (activeJob && activeJob.status !== 'completed' && activeJob.status !== 'failed') {
-            timer = setInterval(async () => {
-                const res = await fetch(`/api/jobs/${activeJob.id}`);
-                const data = await res.json();
-                setActiveJob(data);
-                if (data.status === 'completed' || data.status === 'failed') {
-                    clearInterval(timer);
+        let interval: any;
+        if (activeJob && !['completed', 'failed'].includes(activeJob.status)) {
+            interval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/jobs/${activeJob.id}`);
+                    const updatedJob = await res.json();
+                    setActiveJob(updatedJob);
+
+                    if (updatedJob.status === 'completed') {
+                        clearInterval(interval);
+                        if (project) await refreshProject(project.id);
+                        if (updatedJob.type === 'alignment') setStatusMsg('Alignment complete!');
+                    } else if (updatedJob.status === 'failed') {
+                        clearInterval(interval);
+                        alert(`Job failed: ${updatedJob.errorMessage}`);
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
                 }
-            }, 3000);
+            }, 2000);
         }
-        return () => clearInterval(timer);
-    }, [activeJob]);
+        return () => clearInterval(interval);
+    }, [activeJob, project, refreshProject]);
 
     const handleCreateProject = async (title: string, lyrics: string) => {
         setIsProcessing(true);
@@ -46,8 +70,6 @@ export default function Dashboard() {
             });
             const newProject = await res.json();
             setProject(newProject);
-            
-            // Trigger file upload prompt
             fileInputRef.current?.click();
         } catch (error) {
             alert('Failed to create project');
@@ -69,43 +91,45 @@ export default function Dashboard() {
                 method: 'POST',
                 body: formData
             });
+            
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Upload failed');
+            }
+
             const updatedProject = await res.json();
             setProject(updatedProject);
             
-            // Start alignment automatically after upload
+            // Start alignment
             handleAlign(updatedProject.id);
-        } catch (error) {
-            alert('Upload failed');
+        } catch (error: any) {
+            alert(`Upload failed: ${error.message}`);
             setIsProcessing(false);
         }
     };
 
     const handleAlign = async (id: string) => {
         setIsProcessing(true);
-        setStatusMsg('AI Sincronization in progress...');
+        setStatusMsg('Queueing AI Sincronization...');
         try {
             const res = await fetch(`/api/projects/${id}/align`, { method: 'POST' });
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-            
-            setProject(data.project);
-            setTimeline(data.timeline);
-            setView('preview');
+            const job = await res.json();
+            setActiveJob(job);
         } catch (error: any) {
             alert('Alignment error: ' + error.message);
         } finally {
             setIsProcessing(false);
-            setStatusMsg('');
         }
     };
 
     const handleExport = async () => {
         if (!project) return;
+        setStatusMsg('Queueing Render...');
         try {
             const res = await fetch(`/api/projects/${project.id}/export`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ formats: ['mp4', 'srt'] })
+                body: JSON.stringify({ formats: ['mp4'] })
             });
             const job = await res.json();
             setActiveJob(job);
@@ -148,31 +172,34 @@ export default function Dashboard() {
                         </div>
                         
                         <div className="flex items-center gap-6">
-                            {isProcessing && (
+                            {(isProcessing || (activeJob && !['completed', 'failed'].includes(activeJob.status))) && (
                                 <div className="flex items-center gap-3 px-4 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
                                     <Loader2 size={12} className="animate-spin text-purple-500" />
-                                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-purple-400">{statusMsg}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-purple-400">
+                                        {activeJob && activeJob.status === 'processing' ? `${activeJob.type.toUpperCase()}: ${activeJob.progress}%` : statusMsg || 'Processing...'}
+                                    </span>
                                 </div>
                             )}
 
-                            {activeJob && (
-                                <div className="flex items-center gap-3 px-4 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer group">
-                                    {activeJob.status === 'processing' ? (
-                                        <div className="relative w-3 h-3">
-                                            <Loader2 size={12} className="animate-spin text-purple-500 absolute inset-0" />
-                                        </div>
-                                    ) : activeJob.status === 'completed' ? (
-                                        <CheckCircle2 size={12} className="text-green-500" />
-                                    ) : <Info size={12} className="text-zinc-500" />}
-                                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-zinc-400 group-hover:text-white">
-                                        Export: {activeJob.status} ({activeJob.progress}%)
-                                    </span>
+                            {activeJob?.status === 'completed' && activeJob.type === 'render' && (
+                                <a 
+                                    href={activeJob.outputPath} 
+                                    download 
+                                    className="flex items-center gap-3 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 hover:bg-green-500/20 transition-all text-[9px] font-black uppercase tracking-widest"
+                                >
+                                    <CheckCircle2 size={12} /> Download Final MP4
+                                </a>
+                            )}
+
+                            {activeJob?.status === 'failed' && (
+                                <div className="flex items-center gap-3 px-4 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 text-[9px] font-black uppercase">
+                                    <AlertCircle size={12} /> Job Failed
                                 </div>
                             )}
 
                             <button 
                                 onClick={handleExport}
-                                disabled={!project || isProcessing}
+                                disabled={!project || project.status !== 'ready' || isProcessing}
                                 className="px-6 py-2 rounded-full bg-white hover:bg-zinc-200 text-black text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-20 flex items-center gap-2 shadow-xl shadow-white/5 active:scale-95"
                             >
                                 <Download size={14} /> Render Video
@@ -185,7 +212,7 @@ export default function Dashboard() {
                         <div className={`flex-[1.5] relative ${view === 'editor' ? 'hidden md:block' : 'block'}`}>
                             {project && timeline && activeTemplate ? (
                                 <RemotionPlayerWrapper 
-                                    audioUrl={`/api/projects/${project.id}/audio`}
+                                    audioSrc={`/api/projects/${project.id}/audio`}
                                     timeline={timeline}
                                     template={activeTemplate}
                                 />
@@ -206,21 +233,21 @@ export default function Dashboard() {
                             <div className="flex-1 p-6 border-l border-white/5 bg-black/20 animate-in slide-in-from-right duration-500">
                                 <TimelineEditor 
                                     timeline={timeline}
-                                    currentTimeMs={0} // To be synced with player
+                                    currentTimeMs={0}
                                     onChange={(newTimeline) => setTimeline(newTimeline)}
                                 />
                             </div>
                         )}
                     </div>
 
-                    {/* Context Status Bar */}
                     <footer className="h-10 px-8 border-t border-white/5 bg-zinc-950 flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">
                         <div className="flex gap-6">
                             <span>Project: {project?.title || 'None'}</span>
                             <span>Status: {project?.status || 'Idle'}</span>
+                            {project?.aspectRatio && <span>Ratio: {project.aspectRatio}</span>}
                         </div>
                         <div className="flex gap-6 items-center">
-                            <span>Engine: V4.0.2</span>
+                            <span>Engine: V4.1.0 (Stabilized)</span>
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                             <span>System Healthy</span>
                         </div>

@@ -1,12 +1,14 @@
-import { Audio, AbsoluteFill, useVideoConfig, useCurrentFrame, interpolate, spring } from 'remotion';
 import React from 'react';
-import { Template, Timeline, Segment } from '@/types';
+import { AbsoluteFill, Audio, useCurrentFrame, interpolate, spring, useVideoConfig } from 'remotion';
+import { Timeline, Template } from '@/src/schemas';
 
-export const LyricVideo: React.FC<{
+interface LyricVideoProps {
     audioSrc: string;
     timeline: Timeline;
     template: Template;
-}> = ({ audioSrc, timeline, template }) => {
+}
+
+export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, timeline, template }) => {
     const frame = useCurrentFrame();
     const { fps, width, height } = useVideoConfig();
     const currentTimeMs = (frame / fps) * 1000;
@@ -16,85 +18,75 @@ export const LyricVideo: React.FC<{
         (s) => currentTimeMs >= s.startMs && currentTimeMs <= s.endMs
     );
 
-    // Animation progress
-    const entrance = spring({
-        frame,
-        fps,
-        config: { damping: 10, stiffness: 100 }
-    });
-
-    const getAnimationStyle = (mode: string) => {
-        switch(mode) {
-            case 'zoom': return { transform: `scale(${interpolate(entrance, [0, 1], [0.8, 1])})`, opacity: entrance };
-            case 'slide-up': return { transform: `translateY(${interpolate(entrance, [0, 1], [50, 0])}px)`, opacity: entrance };
-            case 'fade': return { opacity: entrance };
-            default: return {};
-        }
-    };
-
-    const containerStyle: React.CSSProperties = {
-        backgroundColor: template.backgroundMode === 'color' ? template.backgroundColor : 'transparent',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: template.safeArea ? '100px 60px' : '0',
-    };
-
-    const textStyle: React.CSSProperties = {
-        fontFamily: template.fontFamily,
-        fontSize: template.fontSize,
-        color: template.textColor,
-        textAlign: 'center',
-        width: '90%',
-        position: 'absolute',
-        top: `${template.positionY}%`,
-        transform: 'translateY(-50%)',
-        WebkitTextStroke: `${template.strokeWidth}px ${template.strokeColor}`,
-        filter: template.glowColor ? `drop-shadow(0 0 ${template.glowRadius}px ${template.glowColor})` : 'none',
-        lineHeight: 1.2,
-        ...getAnimationStyle(template.animationIn)
-    };
-
     return (
-        <AbsoluteFill style={containerStyle}>
+        <AbsoluteFill style={{ 
+            backgroundColor: template.backgroundMode === 'color' ? template.backgroundColor : 'transparent',
+            display: 'flex',
+            alignItems: template.alignment === 'center' ? 'center' : template.alignment === 'left' ? 'flex-start' : 'flex-end',
+            justifyContent: 'center',
+            padding: template.safeArea ? '10%' : '5%',
+        }}>
             {audioSrc && <Audio src={audioSrc} />}
-            
-            {/* Background Layer (Mock Blur) */}
+
+            {/* Background Effects (Mocked image/video for now) */}
             {template.backgroundMode === 'blur' && (
                 <AbsoluteFill style={{ 
+                    filter: `blur(${template.backgroundBlur}px)`, 
                     backgroundColor: template.backgroundColor,
-                    opacity: 0.5,
-                    filter: `blur(${template.backgroundBlur}px)`
+                    opacity: 0.8
                 }} />
             )}
 
-            <div style={textStyle}>
-                {activeSegment ? (
-                    template.highlightMode === 'word' ? (
-                        activeSegment.words.map((word, i) => {
-                            const wordActive = currentTimeMs >= word.startMs && currentTimeMs <= word.endMs;
-                            return (
-                                <span 
-                                    key={i} 
-                                    style={{ 
-                                        color: wordActive ? template.activeWordColor : template.textColor,
-                                        margin: '0 8px',
-                                        display: 'inline-block',
-                                        transition: 'color 0.1s linear',
-                                        scale: wordActive ? 1.05 : 1
-                                    }}
-                                >
-                                    {word.text}
-                                </span>
-                            );
-                        })
+            {activeSegment && (
+                <div style={{
+                    position: 'absolute',
+                    top: `${template.positionY || template.position.y}%`,
+                    left: `${template.position.x}%`,
+                    transform: 'translate(-50%, -50%)',
+                    width: '80%',
+                    textAlign: template.alignment as any,
+                    color: template.textColor,
+                    fontFamily: template.fontFamily,
+                    fontSize: template.fontSize,
+                    fontWeight: template.fontWeight,
+                    textShadow: template.glow 
+                        ? `0 0 ${template.glowRadius}px ${template.glowColor || template.textColor}` 
+                        : 'none',
+                    WebkitTextStroke: `${template.strokeWidth}px ${template.strokeColor}`,
+                }}>
+                    {template.highlightMode === 'word' ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: template.alignment === 'center' ? 'center' : 'flex-start' }}>
+                            {activeSegment.words.map((word, i) => {
+                                const isActive = currentTimeMs >= word.startMs && currentTimeMs <= word.endMs;
+                                
+                                // Entrance animation
+                                const opacity = interpolate(
+                                    frame - (activeSegment.startMs / 1000 * fps),
+                                    [0, 10],
+                                    [0, 1],
+                                    { extrapolateRight: 'clamp' }
+                                );
+
+                                return (
+                                    <span key={i} style={{ 
+                                        marginRight: '0.25em',
+                                        color: isActive ? template.activeWordColor : template.textColor,
+                                        opacity,
+                                        transition: 'color 0.1s ease',
+                                        display: 'inline-block'
+                                    }}>
+                                        {word.text}
+                                    </span>
+                                );
+                            })}
+                        </div>
                     ) : (
-                        // Line Mode
-                        <span>{activeSegment.text}</span>
-                    )
-                ) : null}
-            </div>
+                        <div style={{ transition: 'all 0.3s ease' }}>
+                            {activeSegment.text}
+                        </div>
+                    )}
+                </div>
+            )}
         </AbsoluteFill>
     );
 };

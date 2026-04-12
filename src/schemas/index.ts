@@ -38,18 +38,22 @@ export const TemplateSchema = z.object({
     strokeWidth: z.number().default(0),
     shadow: z.boolean().default(false),
     glow: z.boolean().default(false),
+    glowColor: z.string().optional(),
+    glowRadius: z.number().optional(),
     blur: z.boolean().default(false),
     alignment: z.enum(['left', 'center', 'right']).default('center'),
     position: z.object({
         x: z.number().default(50),
         y: z.number().default(50),
     }),
+    positionY: z.number().optional(), // Percentage from top
     safeArea: z.boolean().default(true),
     animationIn: z.enum(['fade', 'zoom', 'slide-up', 'none']),
     animationOut: z.enum(['fade', 'zoom', 'slide-down', 'none']),
     highlightMode: z.enum(['word', 'line']),
     backgroundMode: z.enum(['color', 'image', 'blur', 'video', 'transparent']),
-    backgroundConfig: z.record(z.any()).optional(),
+    backgroundColor: z.string().default('#000000'),
+    backgroundBlur: z.number().default(0),
 });
 
 // --- Project ---

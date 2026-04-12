@@ -3,6 +3,14 @@ import { projectRepository } from '@/src/server/repositories/ProjectRepository';
 import fs from 'fs';
 import path from 'path';
 
+const MIME_MAP: Record<string, string> = {
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.aac': 'audio/aac',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+};
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const { id } = params;
@@ -16,6 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         if (!fs.existsSync(filePath)) {
             return NextResponse.json({ error: 'File missing on server' }, { status: 404 });
         }
+
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = MIME_MAP[ext] || 'audio/mpeg';
 
         const stat = fs.statSync(filePath);
         const fileSize = stat.size;
@@ -32,16 +43,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize.toString(),
-                'Content-Type': 'audio/mpeg',
+                'Content-Type': contentType,
             };
 
-            // Using ReadableStream to pipe to NextResponse
             // @ts-ignore
             return new Response(file, { status: 206, headers: head });
         } else {
             const head = {
                 'Content-Length': fileSize.toString(),
-                'Content-Type': 'audio/mpeg',
+                'Content-Type': contentType,
             };
             const file = fs.createReadStream(filePath);
             // @ts-ignore

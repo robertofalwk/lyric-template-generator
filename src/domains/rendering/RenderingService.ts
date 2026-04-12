@@ -1,5 +1,6 @@
 import { renderMedia, bundle } from '@remotion/renderer';
 import { Project } from '@/src/schemas';
+import { TemplateService } from '../templates/TemplateService';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -14,20 +15,23 @@ export class RenderingService {
         
         const mp4Path = path.join(outputDir, 'video.mp4');
         const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
+        
+        // Resolve Template
+        const template = TemplateService.resolve(project.selectedTemplateId);
 
         onProgress(5, 'Bundling Remotion project...');
-        
-        const bundleLocation = await bundle({
-            entryPoint,
-            // Add any other bundling options if needed
-        });
+        const bundleLocation = await bundle({ entryPoint });
 
         onProgress(20, 'Starting render engine...');
 
         try {
+            // Important: Use a URL that Remotion can reach. 
+            // In a local worker, we point to the local API.
+            const audioSrc = `http://localhost:3000/api/projects/${project.id}/audio`;
+
             await renderMedia({
                 composition: {
-                    id: 'LyricVideo',
+                    id: project.aspectRatio === '16:9' ? 'LyricVideoLandscape' : 'LyricVideo',
                     width: project.aspectRatio === '9:16' ? 1080 : 1920,
                     height: project.aspectRatio === '9:16' ? 1920 : 1080,
                     fps: 30,
@@ -36,9 +40,9 @@ export class RenderingService {
                 serveUrl: bundleLocation,
                 outputLocation: mp4Path,
                 inputProps: { 
-                    audioSrc: `http://localhost:3000/api/projects/${project.id}/audio`, // External URL or local file
+                    audioSrc,
                     timeline: project.timeline,
-                    template: project.template
+                    template
                 },
                 codec: 'h264',
                 onProgress: ({ progress }) => {
@@ -47,7 +51,6 @@ export class RenderingService {
                 }
             });
             
-            // Move to public for export
             const publicExport = path.join(process.cwd(), 'public', 'exports', `${jobId}.mp4`);
             await fs.mkdir(path.dirname(publicExport), { recursive: true });
             await fs.copyFile(mp4Path, publicExport);
@@ -60,10 +63,9 @@ export class RenderingService {
     }
 
     private calculateDuration(project: Project): number {
-        if (!project.timeline || project.timeline.segments.length === 0) return 900; // 30s default
-        const lastSegments = project.timeline.segments;
-        const lastEndMs = Math.max(...lastSegments.map(s => s.endMs));
-        return Math.ceil((lastEndMs / 1000) * 30) + 60; // +2s buffer
+        if (!project.timeline || project.timeline.segments.length === 0) return 900; 
+        const lastEndMs = Math.max(...project.timeline.segments.map(s => s.endMs));
+        return Math.ceil((lastEndMs / 1000) * 30) + 60; 
     }
 }
 
