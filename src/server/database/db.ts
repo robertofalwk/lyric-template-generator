@@ -20,7 +20,7 @@ db.exec(`
         selectedPackId TEXT,
         lastVisualScore INTEGER,
         aspectRatio TEXT,
-        status TEXT,
+        status TEXT DEFAULT 'draft', -- draft, review, approved, rendering, completed, published
         alignmentStatus TEXT,
         renderStatus TEXT,
         exportFormats TEXT,
@@ -35,15 +35,53 @@ db.exec(`
         name TEXT NOT NULL,
         startMs INTEGER NOT NULL,
         endMs INTEGER NOT NULL,
-        sectionType TEXT DEFAULT 'verse', -- intro, verse, chorus, bridge, etc
-        templateId TEXT, -- Override
-        backgroundAssetId TEXT, -- Override
-        packId TEXT, -- Override
+        sectionType TEXT DEFAULT 'verse',
+        templateId TEXT,
+        backgroundAssetId TEXT,
+        packId TEXT,
         intensity TEXT DEFAULT 'medium',
-        settings TEXT, -- JSON Overrides
+        settings TEXT, -- JSON
         transitionIn TEXT DEFAULT 'fade',
         transitionOut TEXT DEFAULT 'fade',
         visualScore INTEGER,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(projectId) REFERENCES projects(id)
+    );
+
+    -- V6 Operations: Comments
+    CREATE TABLE IF NOT EXISTS project_comments (
+        id TEXT PRIMARY KEY,
+        projectId TEXT NOT NULL,
+        sceneId TEXT,
+        timestampMs INTEGER,
+        message TEXT NOT NULL,
+        type TEXT DEFAULT 'note', -- note, issue, approval, warning
+        status TEXT DEFAULT 'open', -- open, resolved
+        createdAt TEXT NOT NULL,
+        resolvedAt TEXT,
+        FOREIGN KEY(projectId) REFERENCES projects(id)
+    );
+
+    -- V6 Operations: Render History & Snapshots
+    CREATE TABLE IF NOT EXISTS render_history (
+        id TEXT PRIMARY KEY,
+        projectId TEXT NOT NULL,
+        jobId TEXT,
+        presetId TEXT,
+        snapshot TEXT NOT NULL, -- JSON (Frozen Template + Scenes + Assets)
+        outputPath TEXT,
+        posterPath TEXT,
+        status TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(projectId) REFERENCES projects(id)
+    );
+
+    -- V6 Operations: Event Timeline
+    CREATE TABLE IF NOT EXISTS project_events (
+        id TEXT PRIMARY KEY,
+        projectId TEXT NOT NULL,
+        type TEXT NOT NULL, -- created, aligned, scene_added, approved, rendered, published
+        payload TEXT, -- JSON
         createdAt TEXT NOT NULL,
         FOREIGN KEY(projectId) REFERENCES projects(id)
     );
@@ -55,8 +93,8 @@ db.exec(`
         sourceType TEXT NOT NULL,
         localPath TEXT NOT NULL,
         publicPath TEXT NOT NULL,
-        thumbnailPath TEXT, -- V5 Optimization
-        proxyPath TEXT,      -- V5 Optimization
+        thumbnailPath TEXT,
+        proxyPath TEXT,
         prompt TEXT,
         tags TEXT, -- JSON
         metadata TEXT, -- JSON
@@ -113,8 +151,9 @@ db.exec(`
     );
 `);
 
-// Migration scripts for V5
-try { db.exec(`ALTER TABLE background_assets ADD COLUMN thumbnailPath TEXT;`); } catch(e){}
-try { db.exec(`ALTER TABLE background_assets ADD COLUMN proxyPath TEXT;`); } catch(e){}
+// Migration scripts for V6
+try { db.exec(`CREATE TABLE IF NOT EXISTS project_comments (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, message TEXT NOT NULL, createdAt TEXT NOT NULL);`); } catch(e){}
+try { db.exec(`CREATE TABLE IF NOT EXISTS render_history (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, snapshot TEXT NOT NULL, createdAt TEXT NOT NULL);`); } catch(e){}
+try { db.exec(`CREATE TABLE IF NOT EXISTS project_events (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, type TEXT NOT NULL, createdAt TEXT NOT NULL);`); } catch(e){}
 
 export default db;

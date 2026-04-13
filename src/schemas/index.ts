@@ -33,14 +33,32 @@ export const BackgroundAssetSchema = z.object({
     publicPath: z.string(),
     thumbnailPath: z.string().optional(),
     proxyPath: z.string().optional(),
-    prompt: z.string().optional(),
-    tags: z.array(z.string()).default([]),
-    metadata: z.record(z.any()).default({}),
-    dominantColors: z.array(z.string()).default([]),
     createdAt: z.string().datetime(),
 });
 
-// --- Project Scenes (V5) ---
+// --- Ops: Comments (V6) ---
+export const ProjectCommentSchema = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    sceneId: z.string().optional(),
+    timestampMs: z.number().optional(),
+    message: z.string(),
+    type: z.enum(['note', 'issue', 'approval', 'warning']).default('note'),
+    status: z.enum(['open', 'resolved']).default('open'),
+    createdAt: z.string().datetime(),
+    resolvedAt: z.string().datetime().optional(),
+});
+
+// --- Ops: Project Events (V6) ---
+export const ProjectEventSchema = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    type: z.string(), // created, aligned, approved, etc
+    payload: z.any().optional(),
+    createdAt: z.string().datetime(),
+});
+
+// --- Project Scenes ---
 export const ProjectSceneSchema = z.object({
     id: z.string(),
     projectId: z.string(),
@@ -50,12 +68,9 @@ export const ProjectSceneSchema = z.object({
     sectionType: z.enum(['intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'outro', 'custom']).default('verse'),
     templateId: z.string().optional(),
     backgroundAssetId: z.string().optional(),
-    packId: z.string().optional(),
     intensity: z.enum(['low', 'medium', 'high']).default('medium'),
     transitionIn: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
-    transitionOut: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
     visualScore: z.number().optional(),
-    settings: z.record(z.any()).default({}),
     createdAt: z.string().datetime(),
 });
 
@@ -65,93 +80,38 @@ export const TemplateSchema = z.object({
     name: z.string(),
     category: z.string().default('general'),
     ratio: z.enum(['9:16', '16:9']),
-    
-    // Typography
     fontFamily: z.string(),
     fontSize: z.number(),
     fontWeight: z.string().default('400'),
-    lineHeight: z.number().default(1.2),
-    letterSpacing: z.number().default(0),
-    textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).default('none'),
     textColor: z.string(),
-    activeWordColor: z.string(),
-    
-    // Effects
-    strokeColor: z.string().default('transparent'),
-    strokeWidth: z.number().default(0),
-    shadow: z.boolean().default(false),
-    shadowColor: z.string().default('rgba(0,0,0,0.5)'),
-    shadowBlur: z.number().default(4),
-    glow: z.boolean().default(false),
-    glowColor: z.string().optional(),
-    glowRadius: z.number().optional(),
-    blur: z.boolean().default(false),
-    
-    // Layout
-    alignment: z.enum(['left', 'center', 'right']).default('center'),
-    position: z.object({
-        x: z.number().default(50), 
-        y: z.number().default(50), 
-    }),
-    maxTextWidth: z.number().default(80), 
-    safeArea: z.boolean().default(true),
-    
-    // Animation
-    animationIn: z.enum(['fade', 'zoom', 'slide-up', 'none']),
-    animationOut: z.enum(['fade', 'zoom', 'slide-down', 'none']),
-    highlightMode: z.enum(['word', 'line']),
-    wordScaleActive: z.number().default(1), 
-    
-    // Background
-    backgroundMode: z.enum(['color', 'image', 'blur', 'video', 'transparent']),
     backgroundColor: z.string().default('#000000'),
-    backgroundBlur: z.number().default(0),
-    backgroundOverlayColor: z.string().default('transparent'),
     backgroundOverlayOpacity: z.number().default(0),
-    backgroundAssetType: z.enum(['none', 'image', 'video', 'generated']).default('none'),
     backgroundAssetId: z.string().optional(),
-    backgroundPrompt: z.string().optional(),
-    backgroundFit: z.enum(['cover', 'contain', 'fill']).default('cover'),
-    backgroundPosition: z.string().default('center'),
-    backgroundBlendMode: z.string().default('normal'),
-    motionHints: z.array(z.string()).default([]),
-    
-    // Metadata
     metadata: z.object({
-        sourceType: z.enum(['stock', 'ai-generated', 'ai-refined', 'manual']).default('stock'),
-        originalPrompt: z.string().optional(),
-        baseTemplateId: z.string().optional(),
         version: z.number().default(1),
-        tags: z.array(z.string()).default([]),
-        isFavorite: z.boolean().default(false),
         qualityScore: z.number().min(0).max(100).optional(),
+        sourceType: z.enum(['stock', 'ai-generated', 'ai-refined', 'manual']).default('stock'),
     }).default({}),
 });
 
-// --- Style Packs ---
-export const StylePackSchema = z.object({
+// --- Ops: Render Snapshot (V6) ---
+export const RenderHistorySchema = z.object({
     id: z.string(),
-    name: z.string(),
-    description: z.string().optional(),
-    category: z.string().default('general'),
-    config: z.object({
-        templateIds: z.array(z.string()),
-        backgroundAssetIds: z.array(z.string()),
-        fonts: z.array(z.string()),
-        palettes: z.array(z.record(z.string())),
-        intensityLevels: z.array(z.enum(['low', 'medium', 'high'])),
-    }),
-    isPublic: z.boolean().default(false),
+    projectId: z.string(),
+    jobId: z.string().optional(),
+    presetId: z.string().optional(),
+    snapshot: z.string(), // JSON string of (Template + Scenes + Assets)
+    outputPath: z.string().optional(),
+    posterPath: z.string().optional(),
+    status: z.string(),
     createdAt: z.string().datetime(),
 });
 
-export type Word = z.infer<typeof WordSchema>;
-export type Segment = z.infer<typeof SegmentSchema>;
-export type Timeline = z.infer<typeof TimelineSchema>;
 export type Template = z.infer<typeof TemplateSchema>;
-export type BackgroundAsset = z.infer<typeof BackgroundAssetSchema>;
 export type ProjectScene = z.infer<typeof ProjectSceneSchema>;
-export type StylePack = z.infer<typeof StylePackSchema>;
+export type ProjectComment = z.infer<typeof ProjectCommentSchema>;
+export type ProjectEvent = z.infer<typeof ProjectEventSchema>;
+export type RenderHistory = z.infer<typeof RenderHistorySchema>;
 
 // --- Project ---
 export const ProjectSchema = z.object({
@@ -159,16 +119,13 @@ export const ProjectSchema = z.object({
     title: z.string().min(1),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
-    audioOriginalPath: z.string(),
-    lyricsRaw: z.string(),
     selectedTemplateId: z.string().optional(),
-    selectedBackgroundAssetId: z.string().optional(),
-    selectedPackId: z.string().optional(),
     lastVisualScore: z.number().optional(),
     aspectRatio: z.enum(['9:16', '16:9']),
-    status: z.enum(['draft', 'ready', 'processing', 'completed', 'failed']),
+    status: z.enum(['draft', 'review', 'approved', 'rendering', 'completed', 'published']).default('draft'),
     timeline: TimelineSchema.optional(),
-    scenes: z.array(ProjectSceneSchema).default([]), // V5 Scene Array
+    scenes: z.array(ProjectSceneSchema).default([]),
+    comments: z.array(ProjectCommentSchema).default([]), // V6
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
@@ -181,8 +138,6 @@ export const RenderJobSchema = z.object({
     progress: z.number().default(0),
     createdAt: z.string().datetime(),
     outputPath: z.string().optional(),
-    payload: z.any().optional(),
-    errorMessage: z.string().optional(),
 });
 
 export type RenderJob = z.infer<typeof RenderJobSchema>;
