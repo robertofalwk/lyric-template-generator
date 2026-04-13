@@ -6,9 +6,10 @@ import {
     Loader2, Check, Copy, Trash2, History as HistoryIcon,
     Shield, Scale, Zap, Activity, Layers, 
     Image as ImageIcon, Film, Plus, CheckCircle, Clock,
-    ChevronRight, BookOpen, MessageSquare, AlertTriangle, ShieldCheck, Rocket, ListChecks, Download
+    ChevronRight, BookOpen, MessageSquare, AlertTriangle, ShieldCheck, Rocket, ListChecks, Download,
+    Cpu
 } from 'lucide-react';
-import { Project, ProjectScene, ProjectComment, Template } from '@/src/schemas';
+import { Project, ProjectScene, ProjectComment, Template, TemplateVariation } from '@/src/schemas';
 
 interface SidebarProps {
     onProjectCreate: (title: string, lyrics: string) => void;
@@ -27,41 +28,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const [lyrics, setLyrics] = useState('');
     const [tab, setTab] = useState<'monitor' | 'director' | 'review' | 'publish'>('monitor');
     
-    // Ops State
-    const [comments, setComments] = useState<ProjectComment[]>([]);
-    const [newComment, setNewComment] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
-    
-    // Mocks / V6 Data
-    const qualityChecks = [
-        { label: 'Minimum Scene Score', passed: true, severity: 'warning' },
-        { label: 'Timeline Integrity', passed: true, severity: 'blocking' },
-        { label: 'Social Safe-Zones', passed: true, severity: 'blocking' },
-        { label: 'Audio Frequency Sync', passed: false, severity: 'warning' }
-    ];
+    // AI State
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [variants, setVariants] = useState<TemplateVariation[]>([]);
+    const [aiStatus, setAiStatus] = useState<'idle' | 'interpreting' | 'fallback'>('idle');
 
-    const renderHistory = [
-        { date: '2026-04-13 14:00', version: 'V3 Master', status: 'completed', preset: '9:16 Reels' },
-        { date: '2026-04-12 18:30', version: 'V2 Draft', status: 'completed', preset: '16:9 Youtube' }
-    ];
-
-    const handleAddComment = () => {
-        if (!newComment) return;
-        const comment: ProjectComment = {
-            id: Math.random().toString(36),
-            projectId: 'current',
-            message: newComment,
-            type: 'note',
-            status: 'open',
-            createdAt: new Date().toISOString()
-        };
-        setComments([...comments, comment]);
-        setNewComment('');
+    const handleAIGenerate = async () => {
+        if (!aiPrompt) return;
+        setIsGenerating(true);
+        setAiStatus('interpreting');
+        try {
+            const res = await fetch('/api/templates/generate-variants', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: aiPrompt })
+            });
+            const data = await res.json();
+            setVariants(data);
+            
+            if (res.headers.get('X-TemplateAI-Fallback')) {
+                setAiStatus('fallback');
+            } else {
+                setAiStatus('idle');
+            }
+        } catch (error) { 
+            setAiStatus('fallback');
+            alert('AI interpretion disconnected. Switching to local neural engine.');
+        } finally { setIsGenerating(false); }
     };
 
     return (
         <aside className="w-[440px] border-r border-white/5 bg-zinc-950 flex flex-col h-full shrink-0 relative overflow-hidden">
-            {/* V6 Segmented Studio Navigation */}
+            {/* V6 Studio Navigation */}
             <div className="flex h-20 border-b border-white/5 bg-black/40 px-6 items-center justify-between">
                 <div className="flex gap-2">
                     {['monitor', 'director', 'review', 'publish'].map(t => (
@@ -74,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                     ))}
                 </div>
-                <div className={`w-2 h-2 rounded-full ${tab === 'review' ? 'bg-yellow-500 animate-pulse' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'}`}/>
+                <div className={`w-2 h-2 rounded-full ${aiStatus === 'interpreting' ? 'bg-blue-500 animate-pulse' : aiStatus === 'fallback' ? 'bg-yellow-500' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'}`}/>
             </div>
 
             <div className="flex-1 overflow-y-auto px-10 pb-10 custom-scrollbar mt-10">
@@ -102,35 +101,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onClick={() => onProjectCreate(title, lyrics)}
                             className="w-full py-5 bg-white text-black font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl shadow-2xl hover:bg-zinc-200 active:scale-[0.98] transition-all"
                         >
-                            Sync Studio Signals
+                            Deploy Studio Node
                         </button>
                     </div>
                 )}
 
                 {tab === 'director' && (
                     <div className="flex flex-col gap-10 animate-in slide-in-from-right duration-500">
-                        <section className="p-10 rounded-[2.5rem] bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20 shadow-2xl">
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 mb-6 block">Visual Intent AI</label>
+                        <section className="p-10 rounded-[2.5rem] bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20 shadow-2xl relative overflow-hidden">
+                            {aiStatus === 'fallback' && (
+                                <div className="absolute top-8 right-8 flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-[8px] font-black uppercase tracking-widest">
+                                    <Cpu size={10}/> Local Core
+                                </div>
+                            )}
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 mb-6 block">Art Direction Prompt</label>
                             <textarea 
-                                className="w-full h-24 bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-purple-500/30 resize-none mb-6 font-medium"
-                                placeholder="Direct the scene style..."
+                                className="w-full h-24 bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-purple-500/30 resize-none mb-6 font-medium leading-relaxed"
+                                placeholder="Interpret the visual mood..."
+                                value={aiPrompt}
+                                onChange={e => setAiPrompt(e.target.value)}
                             />
-                            <button className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-purple-500/20 transition-all">
-                                Interpret
+                            <button 
+                                onClick={handleAIGenerate}
+                                className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-purple-500/20 transition-all flex items-center justify-center gap-3"
+                            >
+                                {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <><Sparkles size={14}/> Generate Direction</>}
                             </button>
                         </section>
                         
-                        <div className="space-y-4">
-                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Studio Catalog</label>
-                             <div className="grid grid-cols-1 gap-3">
-                                 {['Trap Dark', 'Pop Clean', 'Cinematic Widescreen'].map(s => (
-                                     <div key={s} className="p-5 rounded-2xl bg-zinc-900 border border-white/5 hover:border-zinc-800 transition-all cursor-pointer flex justify-between items-center group">
-                                         <span className="text-[12px] font-bold text-zinc-400 group-hover:text-white">{s}</span>
-                                         <ChevronRight size={14} className="text-zinc-800 group-hover:text-white" />
-                                     </div>
-                                 ))}
-                             </div>
-                        </div>
+                        {variants.length > 0 && (
+                            <div className="space-y-6">
+                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Output Projections</label>
+                                {variants.map((v, i) => (
+                                    <div key={i} className="p-6 bg-zinc-900 border border-white/5 rounded-3xl flex flex-col gap-4 group hover:border-purple-500/30 transition-all">
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                            <span className="text-zinc-400 flex items-center gap-2"><Layers size={12}/> {v.type}</span>
+                                            <span className={v.score > 80 ? 'text-emerald-500' : 'text-yellow-500'}>{v.score}% Health</span>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-500 italic leading-relaxed">"{v.explanation}"</p>
+                                        <button 
+                                            onClick={() => onTemplateSelect(v.template)}
+                                            className="w-full py-3 bg-white text-black text-[9px] font-black uppercase tracking-[0.3em] rounded-xl hover:bg-zinc-200 transition-all"
+                                        >
+                                            Activate Visual
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -140,41 +158,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 flex items-center gap-2">
                                 <ListChecks size={14}/> Quality Gates
                             </label>
-                            <div className="space-y-3">
-                                {qualityChecks.map(c => (
-                                    <div key={c.label} className="p-4 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-between">
-                                        <span className="text-[11px] font-medium text-zinc-400">{c.label}</span>
-                                        {c.passed ? <CheckCircle size={16} className="text-emerald-500"/> : <AlertTriangle size={16} className="text-yellow-500"/>}
+                            <div className="space-y-3 opacity-40">
+                                {['Minimum Scene Score', 'Timeline Integrity', 'Social Safe-Zones'].map(l => (
+                                    <div key={l} className="p-4 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-between">
+                                        <span className="text-[11px] font-medium text-zinc-400">{l}</span>
+                                        <CheckCircle size={16} className="text-emerald-800"/>
                                     </div>
                                 ))}
                             </div>
                          </section>
 
-                         <section className="flex flex-col gap-6 border-t border-white/5 pt-10">
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 flex items-center gap-2">
-                                <MessageSquare size={14}/> Review Comments
-                            </label>
-                            <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar">
-                                {comments.map(c => (
-                                    <div key={c.id} className="p-4 rounded-2xl bg-zinc-900 border border-white/5 flex flex-col gap-2">
-                                        <p className="text-[11px] text-zinc-300 font-medium">"{c.message}"</p>
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">{new Date(c.createdAt).toLocaleTimeString()}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex gap-2">
-                                <input 
-                                    className="flex-1 bg-zinc-900 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-purple-500/50"
-                                    placeholder="Add studio note..."
-                                    value={newComment}
-                                    onChange={e => setNewComment(e.target.value)}
-                                />
-                                <button onClick={handleAddComment} className="px-4 bg-purple-600 text-white rounded-xl"><Send size={14}/></button>
-                            </div>
-                         </section>
-
-                         <button className="w-full py-5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl hover:bg-emerald-500/20 transition-all shadow-xl shadow-emerald-500/5">
-                            Approve for Render
+                         <button className="w-full py-5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl hover:bg-emerald-500/20 transition-all shadow-xl shadow-emerald-500/5 cursor-not-allowed opacity-50">
+                            Awaiting Signals
                          </button>
                     </div>
                 )}
@@ -183,30 +178,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-5 duration-600">
                         <section className="flex flex-col gap-6">
                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 flex items-center gap-2">
-                                <Rocket size={14}/> Final Publishing
+                                <Rocket size={14}/> Professional Export
                             </label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-3 opacity-20">
                                 {['TikTok 9:16', 'Youtube 16:9', 'Reels 9:16', 'Master 4K'].map(p => (
-                                    <button key={p} className="p-4 rounded-2xl bg-zinc-900 border border-white/5 text-[9px] font-black uppercase tracking-widest text-zinc-500 hover:text-white hover:border-white/20 transition-all text-center">
+                                    <button key={p} className="p-4 rounded-2xl bg-zinc-900 border border-white/5 text-[9px] font-black uppercase tracking-widest text-zinc-500">
                                         {p}
                                     </button>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className="flex flex-col gap-6 border-t border-white/5 pt-10">
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 flex items-center gap-2">
-                                <HistoryIcon size={14}/> Render History
-                            </label>
-                            <div className="space-y-3">
-                                {renderHistory.map((r, i) => (
-                                    <div key={i} className="p-5 rounded-3xl bg-zinc-900 border border-white/5 flex items-center justify-between group hover:border-purple-500/20 transition-all">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[11px] font-bold text-zinc-300">{r.version}</span>
-                                            <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">{r.preset} • {r.date}</span>
-                                        </div>
-                                        <button className="p-2.5 bg-zinc-950 text-zinc-600 group-hover:text-emerald-500 transition-all"><Download size={16}/></button>
-                                    </div>
                                 ))}
                             </div>
                         </section>
@@ -214,8 +192,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
             </div>
 
-            {/* V6 High-Fidelity Studio Footer */}
-            <div className="p-10 border-t border-white/5 bg-zinc-950 shadow-[0_-30px_60px_-15px_rgba(0,0,0,0.6)]">
+            {/* High-Fidelity Studio Footer */}
+            <div className="p-10 border-t border-white/5 bg-zinc-950 shadow-[0_-30px_60px_-15px_rgba(0,0,0,0.5)]">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center relative overflow-hidden group">
@@ -224,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                         <div className="flex flex-col">
                             <p className="text-[11px] font-black text-zinc-200 tracking-[0.1em] uppercase">Studio Master V6</p>
-                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{currentTemplate?.name || 'Loading Ops Node...'}</p>
+                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{currentTemplate?.name || 'Awaiting Neural Input...'}</p>
                         </div>
                     </div>
                     {currentTemplate?.metadata?.qualityScore && (
