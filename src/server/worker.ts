@@ -54,7 +54,8 @@ async function processQueue() {
                     });
 
                 } else if (currentJob.type === 'render') {
-                    const outputPath = await renderingService.render(project, currentJob.id, async (progress, log) => {
+                    const customTemplate = currentJob.payload?.customTemplate;
+                    const outputPath = await renderingService.render(project, currentJob.id, customTemplate, async (progress, log) => {
                         if (currentJob) {
                             // Update progress periodically
                             currentJob.progress = progress;

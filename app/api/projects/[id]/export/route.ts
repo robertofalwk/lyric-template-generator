@@ -18,6 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             type: 'render' as const,
             status: 'queued' as const,
             progress: 0,
+            payload: { customTemplate: body.customTemplate },
             createdAt: new Date().toISOString(),
             logs: ['Render job queued']
         };

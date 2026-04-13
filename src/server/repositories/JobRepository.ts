@@ -12,31 +12,32 @@ export class JobRepository {
         const stmt = db.prepare('SELECT * FROM jobs WHERE id = ?');
         const row = stmt.get(id) as any;
         if (!row) return null;
-        return this.mapRowToJob(row);
+        const job = {
+            ...row,
+            logs: JSON.parse(row.logs),
+            payload: row.payload ? JSON.parse(row.payload) : undefined
+        };
+        return RenderJobSchema.parse(job);
     }
 
     async save(job: RenderJob): Promise<void> {
-        const validated = RenderJobSchema.parse(job);
         const stmt = db.prepare(`
-            INSERT OR REPLACE INTO jobs (
-                id, projectId, type, status, progress, 
-                createdAt, startedAt, finishedAt, 
-                outputPath, logs, errorMessage
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO jobs (id, projectId, type, status, progress, createdAt, startedAt, finishedAt, outputPath, logs, payload, errorMessage)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
-
         stmt.run(
-            validated.id,
-            validated.projectId,
-            validated.type,
-            validated.status,
-            validated.progress,
-            validated.createdAt,
-            validated.startedAt || null,
-            validated.finishedAt || null,
-            validated.outputPath || null,
-            JSON.stringify(validated.logs),
-            validated.errorMessage || null
+            job.id,
+            job.projectId,
+            job.type,
+            job.status,
+            job.progress,
+            job.createdAt,
+            job.startedAt || null,
+            job.finishedAt || null,
+            job.outputPath || null,
+            JSON.stringify(job.logs),
+            job.payload ? JSON.stringify(job.payload) : null,
+            job.errorMessage || null
         );
     }
 

@@ -8,6 +8,7 @@ export class RenderingService {
     async render(
         project: Project, 
         jobId: string, 
+        customTemplate?: any,
         onProgress: (progress: number, log: string) => void
     ) {
         const outputDir = path.join(process.cwd(), 'storage', 'renders', jobId);
@@ -17,7 +18,7 @@ export class RenderingService {
         const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
         
         // Resolve Template
-        const template = TemplateService.resolve(project.selectedTemplateId);
+        const template = customTemplate || TemplateService.resolve(project.selectedTemplateId);
 
         onProgress(5, 'Bundling Remotion project...');
         const bundleLocation = await bundle({ entryPoint });

@@ -29,31 +29,60 @@ export const TemplateSchema = z.object({
     name: z.string(),
     category: z.string().default('general'),
     ratio: z.enum(['9:16', '16:9']),
+    
+    // Typography
     fontFamily: z.string(),
     fontSize: z.number(),
     fontWeight: z.string().default('400'),
+    lineHeight: z.number().default(1.2),
+    letterSpacing: z.number().default(0),
+    textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).default('none'),
     textColor: z.string(),
     activeWordColor: z.string(),
+    
+    // Effects
     strokeColor: z.string().default('transparent'),
     strokeWidth: z.number().default(0),
     shadow: z.boolean().default(false),
+    shadowColor: z.string().default('rgba(0,0,0,0.5)'),
+    shadowBlur: z.number().default(4),
     glow: z.boolean().default(false),
     glowColor: z.string().optional(),
     glowRadius: z.number().optional(),
     blur: z.boolean().default(false),
+    
+    // Layout
     alignment: z.enum(['left', 'center', 'right']).default('center'),
     position: z.object({
-        x: z.number().default(50),
-        y: z.number().default(50),
+        x: z.number().default(50), // Center X %
+        y: z.number().default(50), // Center Y %
     }),
-    positionY: z.number().optional(), // Percentage from top
+    positionY: z.number().optional(), // Top Offset % (Legacy support or explicit)
+    maxTextWidth: z.number().default(80), // % of screen
     safeArea: z.boolean().default(true),
+    
+    // Animation
     animationIn: z.enum(['fade', 'zoom', 'slide-up', 'none']),
     animationOut: z.enum(['fade', 'zoom', 'slide-down', 'none']),
     highlightMode: z.enum(['word', 'line']),
+    wordScaleActive: z.number().default(1), // Scale factor for active word
+    
+    // Background
     backgroundMode: z.enum(['color', 'image', 'blur', 'video', 'transparent']),
     backgroundColor: z.string().default('#000000'),
     backgroundBlur: z.number().default(0),
+    backgroundOverlayColor: z.string().default('transparent'),
+    backgroundOverlayOpacity: z.number().default(0),
+    backgroundImagePrompt: z.string().optional(), // For future AI generation
+    
+    // AI Metadata
+    metadata: z.object({
+        sourceType: z.enum(['stock', 'ai-generated', 'ai-refined', 'manual']).default('stock'),
+        originalPrompt: z.string().optional(),
+        baseTemplateId: z.string().optional(),
+        version: z.number().default(1),
+        tags: z.array(z.string()).default([]),
+    }).default({}),
 });
 
 // --- Project ---
@@ -96,6 +125,7 @@ export const RenderJobSchema = z.object({
     finishedAt: z.string().datetime().optional(),
     outputPath: z.string().optional(),
     logs: z.array(z.string()).default([]),
+    payload: z.any().optional(), // Metadata for the job (e.g. custom template)
     errorMessage: z.string().optional(),
 });
 

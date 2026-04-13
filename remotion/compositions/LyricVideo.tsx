@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Audio, useCurrentFrame, interpolate, spring, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, useCurrentFrame, interpolate, useVideoConfig } from 'remotion';
 import { Timeline, Template } from '@/src/schemas';
 
 interface LyricVideoProps {
@@ -10,7 +10,7 @@ interface LyricVideoProps {
 
 export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, timeline, template }) => {
     const frame = useCurrentFrame();
-    const { fps, width, height } = useVideoConfig();
+    const { fps } = useVideoConfig();
     const currentTimeMs = (frame / fps) * 1000;
 
     // Find active segment
@@ -28,30 +28,43 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, timeline, temp
         }}>
             {audioSrc && <Audio src={audioSrc} />}
 
-            {/* Background Effects (Mocked image/video for now) */}
+            {/* Background Effects */}
             {template.backgroundMode === 'blur' && (
                 <AbsoluteFill style={{ 
-                    filter: `blur(${template.backgroundBlur}px)`, 
+                    backdropFilter: `blur(${template.backgroundBlur}px)`, 
                     backgroundColor: template.backgroundColor,
                     opacity: 0.8
+                }} />
+            )}
+
+            {/* Background Overlay */}
+            {template.backgroundOverlayOpacity > 0 && (
+                <AbsoluteFill style={{ 
+                    backgroundColor: template.backgroundOverlayColor, 
+                    opacity: template.backgroundOverlayOpacity 
                 }} />
             )}
 
             {activeSegment && (
                 <div style={{
                     position: 'absolute',
-                    top: `${template.positionY || template.position.y}%`,
+                    top: `${template.position.y}%`,
                     left: `${template.position.x}%`,
                     transform: 'translate(-50%, -50%)',
-                    width: '80%',
+                    width: `${template.maxTextWidth}%`,
                     textAlign: template.alignment as any,
                     color: template.textColor,
                     fontFamily: template.fontFamily,
                     fontSize: template.fontSize,
                     fontWeight: template.fontWeight,
+                    lineHeight: template.lineHeight,
+                    letterSpacing: `${template.letterSpacing}px`,
+                    textTransform: template.textTransform,
                     textShadow: template.glow 
                         ? `0 0 ${template.glowRadius}px ${template.glowColor || template.textColor}` 
-                        : 'none',
+                        : template.shadow 
+                            ? `2px 2px ${template.shadowBlur}px ${template.shadowColor}` 
+                            : 'none',
                     WebkitTextStroke: `${template.strokeWidth}px ${template.strokeColor}`,
                 }}>
                     {template.highlightMode === 'word' ? (
@@ -67,12 +80,15 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, timeline, temp
                                     { extrapolateRight: 'clamp' }
                                 );
 
+                                const scale = isActive ? template.wordScaleActive : 1;
+
                                 return (
                                     <span key={i} style={{ 
                                         marginRight: '0.25em',
                                         color: isActive ? template.activeWordColor : template.textColor,
                                         opacity,
-                                        transition: 'color 0.1s ease',
+                                        transform: `scale(${scale})`,
+                                        transition: 'all 0.1s ease',
                                         display: 'inline-block'
                                     }}>
                                         {word.text}

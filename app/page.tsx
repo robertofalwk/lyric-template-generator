@@ -7,7 +7,7 @@ import { RemotionPlayerWrapper } from '@/components/RemotionPlayer';
 import { TimelineEditor } from '@/components/TimelineEditor';
 import { Project, Timeline, RenderJob, Template } from '@/src/schemas';
 import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
-import { Download, SlidersHorizontal, Layers, PlayCircle, Loader2, CheckCircle2, Wand2, Info, AlertCircle } from 'lucide-react';
+import { Download, SlidersHorizontal, PlayCircle, Loader2, CheckCircle2, Wand2, AlertCircle } from 'lucide-react';
 
 export default function Dashboard() {
     const [project, setProject] = useState<Project | null>(null);
@@ -16,24 +16,23 @@ export default function Dashboard() {
     const [activeJob, setActiveJob] = useState<RenderJob | null>(null);
     const [view, setView] = useState<'preview' | 'editor'>('preview');
     const [statusMsg, setStatusMsg] = useState('');
+    
+    // Custom Template state (AI-generated)
+    const [customTemplate, setCustomTemplate] = useState<Template | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch refreshed project & timeline
     const refreshProject = useCallback(async (id: string) => {
         try {
             const res = await fetch(`/api/projects/${id}`);
             const updated = await res.json();
             setProject(updated);
-            if (updated.timeline) {
-                setTimeline(updated.timeline);
-            }
+            if (updated.timeline) setTimeline(updated.timeline);
         } catch (err) {
             console.error('Failed to refresh project:', err);
         }
     }, []);
 
-    // Polling for job status
     useEffect(() => {
         let interval: any;
         if (activeJob && !['completed', 'failed'].includes(activeJob.status)) {
@@ -46,7 +45,6 @@ export default function Dashboard() {
                     if (updatedJob.status === 'completed') {
                         clearInterval(interval);
                         if (project) await refreshProject(project.id);
-                        if (updatedJob.type === 'alignment') setStatusMsg('Alignment complete!');
                     } else if (updatedJob.status === 'failed') {
                         clearInterval(interval);
                         alert(`Job failed: ${updatedJob.errorMessage}`);
@@ -80,27 +78,18 @@ export default function Dashboard() {
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!project || !e.target.files?.[0]) return;
-        
         setIsProcessing(true);
         setStatusMsg('Uploading audio essence...');
         try {
             const formData = new FormData();
             formData.append('audio', e.target.files[0]);
-
             const res = await fetch(`/api/projects/${project.id}/upload-audio`, {
                 method: 'POST',
                 body: formData
             });
-            
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Upload failed');
-            }
-
+            if (!res.ok) throw new Error('Upload failed');
             const updatedProject = await res.json();
             setProject(updatedProject);
-            
-            // Start alignment
             handleAlign(updatedProject.id);
         } catch (error: any) {
             alert(`Upload failed: ${error.message}`);
@@ -129,7 +118,12 @@ export default function Dashboard() {
             const res = await fetch(`/api/projects/${project.id}/export`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ formats: ['mp4'] })
+                // If it's a custom template, we should ideally save it first or pass its data
+                // For simplified MVP, we'll assume the renderer can use customTemplate if present
+                body: JSON.stringify({ 
+                    formats: ['mp4'], 
+                    customTemplate: customTemplate 
+                })
             });
             const job = await res.json();
             setActiveJob(job);
@@ -138,7 +132,18 @@ export default function Dashboard() {
         }
     };
 
-    const activeTemplate = project ? TEMPLATES_REGISTRY.find(t => t.id === project.selectedTemplateId) : null;
+    const handleTemplateSelect = (t: Template) => {
+        if (t.metadata?.sourceType !== 'stock') {
+            setCustomTemplate(t);
+        } else {
+            setCustomTemplate(null);
+        }
+        if (project) {
+            setProject({ ...project, selectedTemplateId: t.id });
+        }
+    };
+
+    const activeTemplate = customTemplate || (project ? TEMPLATES_REGISTRY.find(t => t.id === project.selectedTemplateId) : null);
 
     return (
         <div className="flex flex-col h-screen bg-black text-white selection:bg-purple-500/30">
@@ -147,8 +152,9 @@ export default function Dashboard() {
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar 
                     onProjectCreate={handleCreateProject} 
-                    onTemplateSelect={(t) => project && setProject({ ...project, selectedTemplateId: t.id })}
+                    onTemplateSelect={handleTemplateSelect}
                     activeTemplateId={project?.selectedTemplateId}
+                    currentTemplate={activeTemplate || undefined}
                 />
                 
                 <section className="flex-1 flex flex-col bg-zinc-950 relative">
@@ -157,16 +163,10 @@ export default function Dashboard() {
                     {/* Pro Toolbar */}
                     <div className="h-14 border-b border-white/5 bg-zinc-950/50 backdrop-blur-md flex items-center justify-between px-8 shrink-0 z-10">
                         <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                            <button 
-                                onClick={() => setView('preview')}
-                                className={`flex items-center gap-2 h-14 border-b-2 transition-all ${view === 'preview' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}
-                            >
+                            <button onClick={() => setView('preview')} className={`flex items-center gap-2 h-14 border-b-2 transition-all ${view === 'preview' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}>
                                 <PlayCircle size={14} className={view === 'preview' ? 'text-purple-500' : ''} /> Preview Engine
                             </button>
-                            <button 
-                                onClick={() => setView('editor')}
-                                className={`flex items-center gap-2 h-14 border-b-2 transition-all ${view === 'editor' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}
-                            >
+                            <button onClick={() => setView('editor')} className={`flex items-center gap-2 h-14 border-b-2 transition-all ${view === 'editor' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}>
                                 <SlidersHorizontal size={14} className={view === 'editor' ? 'text-purple-500' : ''} /> Timeline Editor
                             </button>
                         </div>
@@ -176,38 +176,23 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-3 px-4 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
                                     <Loader2 size={12} className="animate-spin text-purple-500" />
                                     <span className="text-[9px] font-black uppercase tracking-[0.1em] text-purple-400">
-                                        {activeJob && activeJob.status === 'processing' ? `${activeJob.type.toUpperCase()}: ${activeJob.progress}%` : statusMsg || 'Processing...'}
+                                        {activeJob && activeJob.status === 'processing' ? `${activeJob.type.toUpperCase()}: ${activeJob.progress}%` : statusMsg}
                                     </span>
                                 </div>
                             )}
 
                             {activeJob?.status === 'completed' && activeJob.type === 'render' && (
-                                <a 
-                                    href={activeJob.outputPath} 
-                                    download 
-                                    className="flex items-center gap-3 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 hover:bg-green-500/20 transition-all text-[9px] font-black uppercase tracking-widest"
-                                >
+                                <a href={activeJob.outputPath} download className="flex items-center gap-3 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 hover:bg-green-500/20 transition-all text-[9px] font-black uppercase tracking-widest">
                                     <CheckCircle2 size={12} /> Download Final MP4
                                 </a>
                             )}
 
-                            {activeJob?.status === 'failed' && (
-                                <div className="flex items-center gap-3 px-4 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full text-red-400 text-[9px] font-black uppercase">
-                                    <AlertCircle size={12} /> Job Failed
-                                </div>
-                            )}
-
-                            <button 
-                                onClick={handleExport}
-                                disabled={!project || project.status !== 'ready' || isProcessing}
-                                className="px-6 py-2 rounded-full bg-white hover:bg-zinc-200 text-black text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-20 flex items-center gap-2 shadow-xl shadow-white/5 active:scale-95"
-                            >
-                                <Download size={14} /> Render Video
+                            <button onClick={handleExport} disabled={!project || project.status !== 'ready' || isProcessing} className="px-6 py-2 rounded-full bg-white hover:bg-zinc-200 text-black text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-20 flex items-center gap-2 shadow-xl shadow-white/5 active:scale-95">
+                                Render Video
                             </button>
                         </div>
                     </div>
 
-                    {/* Editor Hub */}
                     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
                         <div className={`flex-[1.5] relative ${view === 'editor' ? 'hidden md:block' : 'block'}`}>
                             {project && timeline && activeTemplate ? (
@@ -223,7 +208,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="text-center">
                                         <h2 className="text-zinc-500 font-bold mb-2">Ready to create magic?</h2>
-                                        <p className="max-w-xs text-xs leading-relaxed opacity-40">Create a project on the left, upload your audio, and let our AI engine handle the sync for you.</p>
+                                        <p className="max-w-xs text-xs leading-relaxed opacity-40">Create a project on the left and use the AI Template Assistant on the Design tab to generate unique visuals.</p>
                                     </div>
                                 </div>
                             )}
@@ -231,11 +216,7 @@ export default function Dashboard() {
 
                         {view === 'editor' && timeline && (
                             <div className="flex-1 p-6 border-l border-white/5 bg-black/20 animate-in slide-in-from-right duration-500">
-                                <TimelineEditor 
-                                    timeline={timeline}
-                                    currentTimeMs={0}
-                                    onChange={(newTimeline) => setTimeline(newTimeline)}
-                                />
+                                <TimelineEditor timeline={timeline} currentTimeMs={0} onChange={(newTimeline) => setTimeline(newTimeline)} />
                             </div>
                         )}
                     </div>
@@ -244,13 +225,9 @@ export default function Dashboard() {
                         <div className="flex gap-6">
                             <span>Project: {project?.title || 'None'}</span>
                             <span>Status: {project?.status || 'Idle'}</span>
-                            {project?.aspectRatio && <span>Ratio: {project.aspectRatio}</span>}
+                            {activeTemplate && <span className="text-purple-500">Active Template: {activeTemplate.name} {activeTemplate.metadata?.sourceType !== 'stock' ? '(AI)' : ''}</span>}
                         </div>
-                        <div className="flex gap-6 items-center">
-                            <span>Engine: V4.1.0 (Stabilized)</span>
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                            <span>System Healthy</span>
-                        </div>
+                        <span>Engine: V4.2.0 (Generative)</span>
                     </footer>
                 </section>
             </div>

@@ -37,8 +37,17 @@ db.exec(`
         finishedAt TEXT,
         outputPath TEXT,
         logs TEXT, -- JSON array
+        payload TEXT, -- JSON object
         errorMessage TEXT,
         FOREIGN KEY(projectId) REFERENCES projects(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category TEXT,
+        data TEXT, -- JSON
+        createdAt TEXT NOT NULL
     );
 `);
 
