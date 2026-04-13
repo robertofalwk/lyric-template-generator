@@ -2,6 +2,12 @@ import db from '../database/db';
 import { Template, TemplateSchema } from '@/src/schemas';
 import { v4 as uuidv4 } from 'uuid';
 
+export interface SaveOptions {
+    createVersion?: boolean;
+    parentVersionId?: string;
+    prompt?: string;
+}
+
 export class TemplateRepository {
     async findAll(filter?: { sourceType?: string, isFavorite?: boolean }): Promise<Template[]> {
         let query = 'SELECT * FROM templates WHERE 1=1';
@@ -27,14 +33,10 @@ export class TemplateRepository {
         return TemplateSchema.parse(JSON.parse(row.data));
     }
 
-    /**
-     * Saves a template. 
-     * @param options.createVersion If true, snapshots the state into template_versions.
-     */
-    async save(template: Template, options: { createVersion?: boolean } = {}): Promise<void> {
+    async save(template: Template, options: SaveOptions = {}): Promise<void> {
         const stmt = db.prepare(`
-            INSERT OR REPLACE INTO templates (id, name, category, data, sourceType, isFavorite, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO templates (id, name, category, data, sourceType, isFavorite, baseTemplateId, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run(
             template.id,
@@ -43,23 +45,45 @@ export class TemplateRepository {
             JSON.stringify(template),
             template.metadata?.sourceType || 'manual',
             template.metadata?.isFavorite ? 1 : 0,
-            template.id.startsWith('draft_') ? new Date().toISOString() : (template.id ? undefined : new Date().toISOString()) // rudimentary logic
+            template.metadata?.baseTemplateId || null,
+            new Date().toISOString()
         );
 
         if (options.createVersion) {
             const versionStmt = db.prepare(`
-                INSERT INTO template_versions (id, templateId, version, prompt, data, createdAt)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO template_versions (id, templateId, version, prompt, data, parentVersionId, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
             versionStmt.run(
                 uuidv4(),
                 template.id,
                 template.metadata?.version || 1,
-                template.metadata?.originalPrompt || 'Snapshot',
+                options.prompt || template.metadata?.originalPrompt || 'Manual Snapshot',
                 JSON.stringify(template),
+                options.parentVersionId || null,
                 new Date().toISOString()
             );
         }
+    }
+
+    async duplicate(id: string, newName?: string): Promise<Template> {
+        const original = await this.findById(id);
+        if (!original) throw new Error('Template not found');
+
+        const duplicated: Template = {
+            ...original,
+            id: `tpl_${uuidv4().slice(0, 8)}`,
+            name: newName || `${original.name} (Copy)`,
+            metadata: {
+                ...original.metadata,
+                version: 1,
+                baseTemplateId: original.id, // Set lineage
+                isFavorite: false
+            }
+        };
+
+        await this.save(duplicated, { createVersion: true, prompt: 'Duplicated from ' + original.name });
+        return duplicated;
     }
 
     async restoreVersion(templateId: string, versionId: string): Promise<Template> {
@@ -68,8 +92,15 @@ export class TemplateRepository {
         if (!row) throw new Error('Version not found');
 
         const restoredData = TemplateSchema.parse(JSON.parse(row.data));
-        // Update main template record to this state
-        await this.save(restoredData, { createVersion: false });
+        // Update version counter and save
+        const current = await this.findById(templateId);
+        restoredData.metadata.version = (current?.metadata?.version || 0) + 1;
+        
+        await this.save(restoredData, { 
+            createVersion: true, 
+            prompt: `Restored from version ${versionId}`,
+            parentVersionId: versionId 
+        });
         return restoredData;
     }
 

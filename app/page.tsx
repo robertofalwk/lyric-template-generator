@@ -7,7 +7,7 @@ import { RemotionPlayerWrapper } from '@/components/RemotionPlayer';
 import { TimelineEditor } from '@/components/TimelineEditor';
 import { Project, Timeline, RenderJob, Template } from '@/src/schemas';
 import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
-import { Download, SlidersHorizontal, PlayCircle, Loader2, CheckCircle2, Wand2 } from 'lucide-react';
+import { SlidersHorizontal, PlayCircle, Loader2, CheckCircle2, Wand2, ShieldCheck } from 'lucide-react';
 
 export default function Dashboard() {
     const [project, setProject] = useState<Project | null>(null);
@@ -29,7 +29,7 @@ export default function Dashboard() {
             setProject(updated);
             if (updated.timeline) setTimeline(updated.timeline);
 
-            // Fetch the actual template object if it's not a stock one
+            // Sync Preview Template if project changed its persistent selection
             if (fullRefresh && updated.selectedTemplateId) {
                 const stock = TEMPLATES_REGISTRY.find(t => t.id === updated.selectedTemplateId);
                 if (!stock) {
@@ -93,7 +93,7 @@ export default function Dashboard() {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!project || !e.target.files?.[0]) return;
         setIsProcessing(true);
-        setStatusMsg('Uploading audio essence...');
+        setStatusMsg('Processing creative assets...');
         try {
             const formData = new FormData();
             formData.append('audio', e.target.files[0]);
@@ -113,7 +113,7 @@ export default function Dashboard() {
 
     const handleAlign = async (id: string) => {
         setIsProcessing(true);
-        setStatusMsg('Queueing AI Sincronization...');
+        setStatusMsg('Syncing Neural Alignment...');
         try {
             const res = await fetch(`/api/projects/${id}/align`, { method: 'POST' });
             const job = await res.json();
@@ -127,16 +127,15 @@ export default function Dashboard() {
 
     const handleExport = async () => {
         if (!project) return;
-        setStatusMsg('Queueing Render...');
+        setStatusMsg('Initializing Render Node...');
         try {
-            // Important: We send the current previewTemplate if it exists and matches the ID
-            // or the worker pulls it from DB using project.selectedTemplateId
             const res = await fetch(`/api/projects/${project.id}/export`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     formats: ['mp4'], 
-                    customTemplate: previewTemplate?.id === project.selectedTemplateId ? previewTemplate : undefined 
+                    // If preview matches persistent, worker pulls from DB, else we pass draft
+                    customTemplate: previewTemplate?.id === project.selectedTemplateId ? undefined : previewTemplate 
                 })
             });
             const job = await res.json();
@@ -147,10 +146,7 @@ export default function Dashboard() {
     };
 
     const handleTemplateSelect = async (t: Template) => {
-        // Just for active UI/preview
         setPreviewTemplate(t);
-
-        // Persist to project if it exists in DB/Registry
         if (project) {
             try {
                 const res = await fetch(`/api/projects/${project.id}`, {
@@ -161,7 +157,7 @@ export default function Dashboard() {
                 const updated = await res.json();
                 setProject(updated);
             } catch (err) {
-                console.error('Failed to sync project template');
+                console.error('Failed to persist selection');
             }
         }
     };
@@ -169,7 +165,7 @@ export default function Dashboard() {
     const activeTemplate = previewTemplate || (project ? TEMPLATES_REGISTRY.find(t => t.id === project.selectedTemplateId) : null);
 
     return (
-        <div className="flex flex-col h-screen bg-black text-white selection:bg-purple-500/30">
+        <div className="flex flex-col h-screen bg-black text-white selection:bg-purple-500/30 font-sans">
             <Navbar />
             
             <div className="flex flex-1 overflow-hidden">
@@ -180,76 +176,89 @@ export default function Dashboard() {
                     currentTemplate={activeTemplate || undefined}
                 />
                 
-                <section className="flex-1 flex flex-col bg-zinc-950 relative">
+                <section className="flex-1 flex flex-col bg-zinc-950 relative shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
                     <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} accept="audio/*" />
 
-                    {/* Pro Toolbar */}
-                    <div className="h-14 border-b border-white/5 bg-zinc-950/50 backdrop-blur-md flex items-center justify-between px-8 shrink-0 z-10">
-                        <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                            <button onClick={() => setView('preview')} className={`flex items-center gap-2 h-14 border-b-2 transition-all ${view === 'preview' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}>
-                                <PlayCircle size={14} className={view === 'preview' ? 'text-purple-500' : ''} /> Preview Engine
+                    {/* V3 Glass Toolbar */}
+                    <div className="h-16 border-b border-white/5 bg-zinc-950/20 backdrop-blur-xl flex items-center justify-between px-10 shrink-0 z-10">
+                        <div className="flex gap-10 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                            <button onClick={() => setView('preview')} className={`flex items-center gap-3 h-16 border-b-2 transition-all group ${view === 'preview' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}>
+                                <PlayCircle size={16} className={view === 'preview' ? 'text-purple-500' : 'group-hover:text-zinc-400'} /> Preview Engine
                             </button>
-                            <button onClick={() => setView('editor')} className={`flex items-center gap-2 h-14 border-b-2 transition-all ${view === 'editor' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}>
-                                <SlidersHorizontal size={14} className={view === 'editor' ? 'text-purple-500' : ''} /> Timeline Editor
+                            <button onClick={() => setView('editor')} className={`flex items-center gap-3 h-16 border-b-2 transition-all ${view === 'editor' ? 'text-white border-white' : 'border-transparent hover:text-zinc-300'}`}>
+                                <SlidersHorizontal size={16} className={view === 'editor' ? 'text-purple-500' : ''} /> Timeline Console
                             </button>
                         </div>
                         
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-8">
                             {(isProcessing || (activeJob && !['completed', 'failed'].includes(activeJob.status))) && (
-                                <div className="flex items-center gap-3 px-4 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
-                                    <Loader2 size={12} className="animate-spin text-purple-500" />
-                                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-purple-400">
-                                        {activeJob && activeJob.status === 'processing' ? `${activeJob.type.toUpperCase()}: ${activeJob.progress}%` : statusMsg}
+                                <div className="flex items-center gap-4 px-5 py-2 bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+                                    <Loader2 size={14} className="animate-spin text-purple-500" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-purple-400">
+                                        {activeJob && activeJob.status === 'processing' ? `${activeJob.type}: ${activeJob.progress}%` : statusMsg}
                                     </span>
                                 </div>
                             )}
 
                             {activeJob?.status === 'completed' && activeJob.type === 'render' && (
-                                <a href={activeJob.outputPath} download className="flex items-center gap-3 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 hover:bg-green-500/20 transition-all text-[9px] font-black uppercase tracking-widest">
-                                    Download MP4
+                                <a href={activeJob.outputPath} download className="flex items-center gap-4 px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 hover:bg-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/5">
+                                    <CheckCircle2 size={14} /> Production Ready
                                 </a>
                             )}
 
-                            <button onClick={handleExport} disabled={!project || project.status !== 'ready' || isProcessing} className="px-6 py-2 rounded-full bg-white hover:bg-zinc-200 text-black text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-20 flex items-center gap-2 shadow-xl shadow-white/5 active:scale-95">
-                                Render Video
+                            <button onClick={handleExport} disabled={!project || project.status !== 'ready' || isProcessing} className="px-8 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-20 flex items-center gap-3 shadow-2xl shadow-white/10 active:scale-95">
+                                Final Master
                             </button>
                         </div>
                     </div>
 
                     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-                        <div className={`flex-[1.5] relative ${view === 'editor' ? 'hidden md:block' : 'block'}`}>
+                        <div className={`flex-[1.8] relative ${view === 'editor' ? 'hidden md:block' : 'block'} p-8`}>
                             {project && timeline && activeTemplate ? (
-                                <RemotionPlayerWrapper 
-                                    audioSrc={`/api/projects/${project.id}/audio`}
-                                    timeline={timeline}
-                                    template={activeTemplate}
-                                />
+                                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/5 shadow-2xl bg-black">
+                                    <RemotionPlayerWrapper 
+                                        audioSrc={`/api/projects/${project.id}/audio`}
+                                        timeline={timeline}
+                                        template={activeTemplate}
+                                    />
+                                </div>
                             ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center gap-6 text-zinc-800 p-12">
-                                    <div className="w-32 h-32 bg-zinc-900/50 rounded-full flex items-center justify-center border border-zinc-800/50">
-                                        <Wand2 size={48} className="opacity-20" />
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-8 text-zinc-900">
+                                    <div className="relative">
+                                        <div className="w-40 h-40 bg-zinc-900/20 rounded-full flex items-center justify-center border border-zinc-900/50 animate-pulse">
+                                            <Wand2 size={64} className="opacity-10" />
+                                        </div>
+                                        <div className="absolute inset-0 border-2 border-dashed border-zinc-800/20 rounded-full animate-[spin_20s_linear_infinite]"/>
                                     </div>
-                                    <div className="text-center">
-                                        <h2 className="text-zinc-500 font-bold mb-2">Ready to create magic?</h2>
-                                        <p className="max-w-xs text-xs leading-relaxed opacity-40">Create a project on the left and use the Art Director on the Design tab to generate unique visuals.</p>
+                                    <div className="text-center group">
+                                        <h2 className="text-zinc-600 font-black text-xs uppercase tracking-[0.3em] mb-3 group-hover:text-zinc-400 transition-colors">Awaiting Production Input</h2>
+                                        <p className="max-w-xs text-[10px] font-bold text-zinc-800 uppercase tracking-widest leading-relaxed">Initialize a workspace to engage the Art Director AI.</p>
                                     </div>
                                 </div>
                             )}
                         </div>
 
                         {view === 'editor' && timeline && (
-                            <div className="flex-1 p-6 border-l border-white/5 bg-black/20 animate-in slide-in-from-right duration-500">
+                            <div className="flex-1 p-8 border-l border-white/5 bg-zinc-950 animate-in slide-in-from-right duration-700">
                                 <TimelineEditor timeline={timeline} currentTimeMs={0} onChange={(newTimeline) => setTimeline(newTimeline)} />
                             </div>
                         )}
                     </div>
 
-                    <footer className="h-10 px-8 border-t border-white/5 bg-zinc-950 flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">
-                        <div className="flex gap-6">
-                            <span>Project: {project?.title || 'None'}</span>
-                            {activeTemplate && <span className="text-purple-500">Active: {activeTemplate.name} {activeTemplate.metadata?.sourceType !== 'stock' ? '(Custom)' : ''}</span>}
+                    <footer className="h-12 px-10 border-t border-white/5 bg-zinc-950 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.25em] text-zinc-700">
+                        <div className="flex gap-10">
+                            <span className="flex items-center gap-2">Project • <span className="text-zinc-400">{project?.title || 'Inactive'}</span></span>
+                            {activeTemplate && (
+                                <span className="flex items-center gap-2 text-purple-500/80">
+                                    <ShieldCheck size={12}/> {activeTemplate.name} 
+                                    <span className="text-zinc-800 tracking-tighter ml-2">V{activeTemplate.metadata?.version || 1}</span>
+                                </span>
+                            )}
                         </div>
-                        <span>Art Director Engine v2.0 (Stable)</span>
+                        <div className="flex items-center gap-2 opacity-50">
+                            <span>Engine v4.0.0 Pro</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/>
+                        </div>
                     </footer>
                 </section>
             </div>

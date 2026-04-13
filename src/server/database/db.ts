@@ -49,6 +49,7 @@ db.exec(`
         data TEXT, -- JSON
         sourceType TEXT DEFAULT 'stock', -- stock, ai-generated, etc
         isFavorite INTEGER DEFAULT 0,
+        baseTemplateId TEXT, -- Lineage
         createdAt TEXT NOT NULL
     );
 
@@ -58,9 +59,23 @@ db.exec(`
         version INTEGER NOT NULL,
         prompt TEXT,
         data TEXT, -- JSON
+        parentVersionId TEXT, -- Lineage
         createdAt TEXT NOT NULL,
         FOREIGN KEY(templateId) REFERENCES templates(id)
     );
 `);
 
+/**
+ * Migration helper to add lineage columns if they don't exist
+ * SQLite doesn't support 'IF NOT EXISTS' for columns in ALTER TABLE directly.
+ */
+try {
+    db.exec(`ALTER TABLE templates ADD COLUMN baseTemplateId TEXT;`);
+} catch (e) { /* Already exists */ }
+
+try {
+    db.exec(`ALTER TABLE template_versions ADD COLUMN parentVersionId TEXT;`);
+} catch (e) { /* Already exists */ }
+
 export default db;
+ Isra
