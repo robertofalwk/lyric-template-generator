@@ -1,42 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { projectRepository } from '@/src/server/repositories/ProjectRepository';
-import { ProjectSchema } from '@/src/schemas';
 import { v4 as uuidv4 } from 'uuid';
-import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
 
-export async function POST(req: NextRequest) {
+export async function GET() {
     try {
-        const body = await req.json();
-        const projectId = uuidv4();
-        
-        const project = ProjectSchema.parse({
-            id: projectId,
-            title: body.title || 'Untitled Project',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            audioOriginalPath: '',
-            lyricsRaw: body.lyrics || '',
-            selectedTemplateId: body.templateId || TEMPLATES_REGISTRY[0].id,
-            aspectRatio: body.aspectRatio || '9:16',
-            status: 'draft',
-            alignmentStatus: 'pending',
-            renderStatus: 'pending',
-            settings: body.settings || {
-                useVocalIsolation: false,
-                language: 'pt',
-                wordLevelTiming: true,
-                globalOffsetMs: 0
-            }
-        });
-
-        await projectRepository.save(project);
-        return NextResponse.json(project);
+        const projects = await projectRepository.findAll();
+        return NextResponse.json(projects);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-export async function GET() {
-    const projects = await projectRepository.findAll();
-    return NextResponse.json(projects);
+export async function POST(req: NextRequest) {
+    try {
+        const { title, lyrics, aspectRatio = '9:16' } = await req.json();
+        const project = {
+            id: uuidv4(),
+            title: title || 'Untitled Production',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            aspectRatio,
+            status: 'draft' as const,
+            scenes: [],
+            // Store lyrics in a project field or separate service if needed
+        };
+
+        await projectRepository.save(project as any);
+        return NextResponse.json(project);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 }
+ Isra
