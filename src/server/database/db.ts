@@ -47,7 +47,19 @@ db.exec(`
         name TEXT NOT NULL,
         category TEXT,
         data TEXT, -- JSON
+        sourceType TEXT DEFAULT 'stock', -- stock, ai-generated, etc
+        isFavorite INTEGER DEFAULT 0,
         createdAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS template_versions (
+        id TEXT PRIMARY KEY,
+        templateId TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        prompt TEXT,
+        data TEXT, -- JSON
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(templateId) REFERENCES templates(id)
     );
 `);
 

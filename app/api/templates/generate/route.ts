@@ -8,9 +8,9 @@ export async function POST(req: NextRequest) {
         if (!prompt) return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
 
         const intent = IntentParser.parse(prompt);
-        const template = TemplateGenerator.generate(intent, prompt);
+        const variants = TemplateGenerator.generateVariants(intent, prompt);
 
-        return NextResponse.json(template);
+        return NextResponse.json(variants);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

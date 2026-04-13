@@ -7,6 +7,8 @@ export interface VisualIntent {
     backgroundMode: 'color' | 'blur' | 'transparent';
     isNeon: boolean;
     emphasis: 'word' | 'line';
+    intensity: 'low' | 'medium' | 'high';
+    platform: 'reels' | 'youtube' | 'generic';
 }
 
 export class IntentParser {
@@ -20,35 +22,45 @@ export class IntentParser {
         let backgroundMode: 'color' | 'blur' | 'transparent' = 'color';
         let isNeon = false;
         let emphasis: 'word' | 'line' = 'word';
+        let intensity: 'low' | 'medium' | 'high' = 'medium';
+        let platform: 'reels' | 'youtube' | 'generic' = 'generic';
 
-        // Mood detection
-        if (text.includes('agressivo') || text.includes('impacto') || text.includes('trap')) mood = 'aggressive';
-        if (text.includes('elegante') || text.includes('suave') || text.includes('clássico')) mood = 'elegant';
-        if (text.includes('moderno') || text.includes('clean')) mood = 'clean';
-        if (text.includes('reels') || text.includes('tiktok')) mood = 'impactful';
+        // Mood & Category detection
+        if (text.includes('agressivo') || text.includes('impacto') || text.includes('trap') || text.includes('funke')) mood = 'aggressive';
+        if (text.includes('elegante') || text.includes('suave') || text.includes('luxury') || text.includes('serif')) mood = 'elegant';
+        if (text.includes('cyber') || text.includes('futurist') || text.includes('neon')) mood = 'aggressive'; 
+        if (text.includes('clean') || text.includes('minimal') || text.includes('moderno')) mood = 'clean';
+
+        // Intensity detection
+        if (text.includes('calmo') || text.includes('discreto') || text.includes('leve')) intensity = 'low';
+        if (text.includes('extremo') || text.includes('gritoso') || text.includes('brilhando muito')) intensity = 'high';
 
         // Palette detection
-        if (text.includes('neon') || text.includes('roxo') || text.includes('cyberpunk')) {
+        if (text.includes('neon') || text.includes('roxo') || text.includes('cyan')) {
             palette = 'neon-purple';
             isNeon = true;
         }
-        if (text.includes('dourado') || text.includes('cinema') || text.includes('premium')) palette = 'cinematic-gold';
-        if (text.includes('branco') || text.includes('claro')) palette = 'minimal-light';
-        if (text.includes('sunset') || text.includes('quente')) palette = 'sunset-vibe';
-        if (text.includes('verde') || text.includes('tóxico')) palette = 'toxic-green';
+        if (text.includes('dourado') || text.includes('gold') || text.includes('premium')) palette = 'cinematic-gold';
+        if (text.includes('branco') || text.includes('light')) palette = 'minimal-light';
+        if (text.includes('sunset') || text.includes('vermelho')) palette = 'sunset-vibe';
+        if (text.includes('matrix') || text.includes('verde')) palette = 'toxic-green';
 
         // Font suggestion
         if (mood === 'aggressive') font = 'Archivo Black';
-        if (mood === 'elegant') font = 'Cormorant Garamond';
+        if (mood === 'elegant') font = 'Playfair Display';
         if (isNeon) font = 'Orbitron';
-        if (text.includes('serif')) font = 'Playfair Display';
-        if (text.includes('mono')) font = 'Roboto Mono';
+        if (text.includes('manuscrito') || text.includes('cursive')) font = 'Montserrat';
+        if (text.includes('techno')) font = 'Orbitron';
 
         // Background / Effects
         if (text.includes('blur') || text.includes('fundo desfocado')) backgroundMode = 'blur';
         if (text.includes('transparente') || text.includes('reels')) backgroundMode = 'transparent';
-        if (text.includes('linha') || text.includes('frase')) emphasis = 'line';
+        if (text.includes('legendas') || text.includes('frase')) emphasis = 'line';
 
-        return { mood, palette, font, backgroundMode, isNeon, emphasis };
+        // Platform
+        if (text.includes('reels') || text.includes('shorts') || text.includes('tiktok')) platform = 'reels';
+        if (text.includes('hd') || text.includes('cinema')) platform = 'youtube';
+
+        return { mood, palette, font, backgroundMode, isNeon, emphasis, intensity, platform };
     }
 }

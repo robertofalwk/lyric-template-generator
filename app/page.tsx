@@ -7,7 +7,7 @@ import { RemotionPlayerWrapper } from '@/components/RemotionPlayer';
 import { TimelineEditor } from '@/components/TimelineEditor';
 import { Project, Timeline, RenderJob, Template } from '@/src/schemas';
 import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
-import { Download, SlidersHorizontal, PlayCircle, Loader2, CheckCircle2, Wand2, AlertCircle } from 'lucide-react';
+import { Download, SlidersHorizontal, PlayCircle, Loader2, CheckCircle2, Wand2 } from 'lucide-react';
 
 export default function Dashboard() {
     const [project, setProject] = useState<Project | null>(null);
@@ -17,17 +17,31 @@ export default function Dashboard() {
     const [view, setView] = useState<'preview' | 'editor'>('preview');
     const [statusMsg, setStatusMsg] = useState('');
     
-    // Custom Template state (AI-generated)
-    const [customTemplate, setCustomTemplate] = useState<Template | null>(null);
+    // Preview-only template (for AI variants or unsaved drafts)
+    const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const refreshProject = useCallback(async (id: string) => {
+    const refreshProject = useCallback(async (id: string, fullRefresh = false) => {
         try {
             const res = await fetch(`/api/projects/${id}`);
             const updated = await res.json();
             setProject(updated);
             if (updated.timeline) setTimeline(updated.timeline);
+
+            // Fetch the actual template object if it's not a stock one
+            if (fullRefresh && updated.selectedTemplateId) {
+                const stock = TEMPLATES_REGISTRY.find(t => t.id === updated.selectedTemplateId);
+                if (!stock) {
+                    const tRes = await fetch(`/api/templates/${updated.selectedTemplateId}`);
+                    if (tRes.ok) {
+                        const tData = await tRes.json();
+                        setPreviewTemplate(tData);
+                    }
+                } else {
+                    setPreviewTemplate(null);
+                }
+            }
         } catch (err) {
             console.error('Failed to refresh project:', err);
         }
@@ -44,7 +58,7 @@ export default function Dashboard() {
 
                     if (updatedJob.status === 'completed') {
                         clearInterval(interval);
-                        if (project) await refreshProject(project.id);
+                        if (project) await refreshProject(project.id, true);
                     } else if (updatedJob.status === 'failed') {
                         clearInterval(interval);
                         alert(`Job failed: ${updatedJob.errorMessage}`);
@@ -115,14 +129,14 @@ export default function Dashboard() {
         if (!project) return;
         setStatusMsg('Queueing Render...');
         try {
+            // Important: We send the current previewTemplate if it exists and matches the ID
+            // or the worker pulls it from DB using project.selectedTemplateId
             const res = await fetch(`/api/projects/${project.id}/export`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // If it's a custom template, we should ideally save it first or pass its data
-                // For simplified MVP, we'll assume the renderer can use customTemplate if present
                 body: JSON.stringify({ 
                     formats: ['mp4'], 
-                    customTemplate: customTemplate 
+                    customTemplate: previewTemplate?.id === project.selectedTemplateId ? previewTemplate : undefined 
                 })
             });
             const job = await res.json();
@@ -132,18 +146,27 @@ export default function Dashboard() {
         }
     };
 
-    const handleTemplateSelect = (t: Template) => {
-        if (t.metadata?.sourceType !== 'stock') {
-            setCustomTemplate(t);
-        } else {
-            setCustomTemplate(null);
-        }
+    const handleTemplateSelect = async (t: Template) => {
+        // Just for active UI/preview
+        setPreviewTemplate(t);
+
+        // Persist to project if it exists in DB/Registry
         if (project) {
-            setProject({ ...project, selectedTemplateId: t.id });
+            try {
+                const res = await fetch(`/api/projects/${project.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ selectedTemplateId: t.id })
+                });
+                const updated = await res.json();
+                setProject(updated);
+            } catch (err) {
+                console.error('Failed to sync project template');
+            }
         }
     };
 
-    const activeTemplate = customTemplate || (project ? TEMPLATES_REGISTRY.find(t => t.id === project.selectedTemplateId) : null);
+    const activeTemplate = previewTemplate || (project ? TEMPLATES_REGISTRY.find(t => t.id === project.selectedTemplateId) : null);
 
     return (
         <div className="flex flex-col h-screen bg-black text-white selection:bg-purple-500/30">
@@ -183,7 +206,7 @@ export default function Dashboard() {
 
                             {activeJob?.status === 'completed' && activeJob.type === 'render' && (
                                 <a href={activeJob.outputPath} download className="flex items-center gap-3 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 hover:bg-green-500/20 transition-all text-[9px] font-black uppercase tracking-widest">
-                                    <CheckCircle2 size={12} /> Download Final MP4
+                                    Download MP4
                                 </a>
                             )}
 
@@ -208,7 +231,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="text-center">
                                         <h2 className="text-zinc-500 font-bold mb-2">Ready to create magic?</h2>
-                                        <p className="max-w-xs text-xs leading-relaxed opacity-40">Create a project on the left and use the AI Template Assistant on the Design tab to generate unique visuals.</p>
+                                        <p className="max-w-xs text-xs leading-relaxed opacity-40">Create a project on the left and use the Art Director on the Design tab to generate unique visuals.</p>
                                     </div>
                                 </div>
                             )}
@@ -224,10 +247,9 @@ export default function Dashboard() {
                     <footer className="h-10 px-8 border-t border-white/5 bg-zinc-950 flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">
                         <div className="flex gap-6">
                             <span>Project: {project?.title || 'None'}</span>
-                            <span>Status: {project?.status || 'Idle'}</span>
-                            {activeTemplate && <span className="text-purple-500">Active Template: {activeTemplate.name} {activeTemplate.metadata?.sourceType !== 'stock' ? '(AI)' : ''}</span>}
+                            {activeTemplate && <span className="text-purple-500">Active: {activeTemplate.name} {activeTemplate.metadata?.sourceType !== 'stock' ? '(Custom)' : ''}</span>}
                         </div>
-                        <span>Engine: V4.2.0 (Generative)</span>
+                        <span>Art Director Engine v2.0 (Stable)</span>
                     </footer>
                 </section>
             </div>

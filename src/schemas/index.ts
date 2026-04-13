@@ -82,8 +82,20 @@ export const TemplateSchema = z.object({
         baseTemplateId: z.string().optional(),
         version: z.number().default(1),
         tags: z.array(z.string()).default([]),
+        isFavorite: z.boolean().default(false),
+        qualityScore: z.number().min(0).max(100).optional(),
     }).default({}),
 });
+
+export const TemplateVariationSchema = z.object({
+    id: z.string(),
+    type: z.enum(['safe', 'balanced', 'bold']),
+    template: TemplateSchema,
+    score: z.number(),
+    explanation: z.string().optional(),
+});
+
+export type TemplateVariation = z.infer<typeof TemplateVariationSchema>;
 
 // --- Project ---
 export const ProjectSettingsSchema = z.object({
