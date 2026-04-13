@@ -36,26 +36,82 @@ export const BackgroundAssetSchema = z.object({
     createdAt: z.string().datetime(),
 });
 
-// --- Ops: Comments (V6) ---
-export const ProjectCommentSchema = z.object({
+// --- Template (MASTER CONTRACT V6.2) ---
+export const TemplateSchema = z.object({
     id: z.string(),
-    projectId: z.string(),
-    sceneId: z.string().optional(),
-    timestampMs: z.number().optional(),
-    message: z.string(),
-    type: z.enum(['note', 'issue', 'approval', 'warning']).default('note'),
-    status: z.enum(['open', 'resolved']).default('open'),
-    createdAt: z.string().datetime(),
-    resolvedAt: z.string().datetime().optional(),
-});
-
-// --- Ops: Project Events (V6) ---
-export const ProjectEventSchema = z.object({
-    id: z.string(),
-    projectId: z.string(),
-    type: z.string(), // created, aligned, approved, etc
-    payload: z.any().optional(),
-    createdAt: z.string().datetime(),
+    name: z.string(),
+    category: z.string().default('general'),
+    ratio: z.enum(['9:16', '16:9']),
+    
+    // Typography (V3-V6)
+    fontFamily: z.string(),
+    fontSize: z.number(),
+    fontWeight: z.string().default('400'),
+    lineHeight: z.number().default(1.2),
+    letterSpacing: z.number().default(0),
+    textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).default('none'),
+    textColor: z.string(),
+    activeWordColor: z.string(),
+    
+    // Visual Effects (V4-V5)
+    strokeColor: z.string().default('transparent'),
+    strokeWidth: z.number().default(0),
+    shadow: z.boolean().default(false),
+    shadowColor: z.string().default('rgba(0,0,0,0.5)'),
+    shadowBlur: z.number().default(4),
+    glow: z.boolean().default(false),
+    glowColor: z.string().optional(),
+    glowRadius: z.number().optional(),
+    blur: z.boolean().default(false),
+    
+    // Layout & Space (V5)
+    alignment: z.enum(['left', 'center', 'right']).default('center'),
+    position: z.object({
+        x: z.number().default(50), 
+        y: z.number().default(50), 
+    }),
+    maxTextWidth: z.number().default(80), 
+    safeArea: z.boolean().default(true),
+    
+    // Animation Controls (V4)
+    animationIn: z.enum(['fade', 'zoom', 'slide-up', 'none']).default('fade'),
+    animationOut: z.enum(['fade', 'zoom', 'slide-down', 'none']).default('fade'),
+    highlightMode: z.enum(['word', 'line']).default('word'),
+    wordScaleActive: z.number().default(1), 
+    
+    // Background Art Direction (V4-V6)
+    backgroundMode: z.enum(['color', 'image', 'blur', 'video', 'transparent']).default('color'),
+    backgroundColor: z.string().default('#000000'),
+    backgroundBlur: z.number().default(0),
+    backgroundOverlayColor: z.string().default('transparent'),
+    backgroundOverlayOpacity: z.number().default(0),
+    backgroundAssetType: z.enum(['none', 'image', 'video', 'generated']).default('none'),
+    backgroundAssetId: z.string().optional(),
+    backgroundPrompt: z.string().optional(),
+    backgroundFit: z.enum(['cover', 'contain', 'fill']).default('cover'),
+    backgroundPosition: z.string().default('center'),
+    backgroundBlendMode: z.string().default('normal'),
+    motionHints: z.array(z.string()).default([]),
+    
+    // Studio Metadata & AI Lineage (V6.2 RECONCILIATION)
+    metadata: z.object({
+        sourceType: z.enum(['stock', 'ai-generated', 'ai-refined', 'manual']).default('stock'),
+        originalPrompt: z.string().optional(),
+        refinePrompt: z.string().optional(),
+        baseTemplateId: z.string().optional(),
+        version: z.number().default(1),
+        tags: z.array(z.string()).default([]),
+        isFavorite: z.boolean().default(false),
+        qualityScore: z.number().min(0).max(100).optional(),
+        
+        // V6 Ops & AI Lineage
+        providerUsed: z.string().optional(),
+        modelUsed: z.string().optional(),
+        aiMode: z.enum(['external', 'local-fallback', 'local-heuristic']).optional(),
+        aiRefinedAt: z.string().optional(),
+        fallbackUsed: z.boolean().default(false),
+        interpretationSummary: z.string().optional(),
+    }).default({}),
 });
 
 // --- Project Scenes ---
@@ -74,44 +130,35 @@ export const ProjectSceneSchema = z.object({
     createdAt: z.string().datetime(),
 });
 
-// --- Template ---
-export const TemplateSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    category: z.string().default('general'),
-    ratio: z.enum(['9:16', '16:9']),
-    fontFamily: z.string(),
-    fontSize: z.number(),
-    fontWeight: z.string().default('400'),
-    textColor: z.string(),
-    backgroundColor: z.string().default('#000000'),
-    backgroundOverlayOpacity: z.number().default(0),
-    backgroundAssetId: z.string().optional(),
-    metadata: z.object({
-        version: z.number().default(1),
-        qualityScore: z.number().min(0).max(100).optional(),
-        sourceType: z.enum(['stock', 'ai-generated', 'ai-refined', 'manual']).default('stock'),
-    }).default({}),
-});
-
-// --- Ops: Render Snapshot (V6) ---
-export const RenderHistorySchema = z.object({
+// --- Project Feedback (V6 Ops) ---
+export const ProjectCommentSchema = z.object({
     id: z.string(),
     projectId: z.string(),
-    jobId: z.string().optional(),
-    presetId: z.string().optional(),
-    snapshot: z.string(), // JSON string of (Template + Scenes + Assets)
-    outputPath: z.string().optional(),
-    posterPath: z.string().optional(),
-    status: z.string(),
+    sceneId: z.string().optional(),
+    timestampMs: z.number().optional(),
+    message: z.string(),
+    type: z.enum(['note', 'issue', 'approval', 'warning']).default('note'),
+    status: z.enum(['open', 'resolved']).default('open'),
     createdAt: z.string().datetime(),
+    resolvedAt: z.string().datetime().optional(),
 });
 
+export const TemplateVariationSchema = z.object({
+    id: z.string(),
+    type: z.enum(['safe', 'balanced', 'bold']),
+    template: TemplateSchema,
+    score: z.number(),
+    explanation: z.string().optional(),
+});
+
+export type Word = z.infer<typeof WordSchema>;
+export type Segment = z.infer<typeof SegmentSchema>;
+export type Timeline = z.infer<typeof TimelineSchema>;
 export type Template = z.infer<typeof TemplateSchema>;
+export type BackgroundAsset = z.infer<typeof BackgroundAssetSchema>;
 export type ProjectScene = z.infer<typeof ProjectSceneSchema>;
 export type ProjectComment = z.infer<typeof ProjectCommentSchema>;
-export type ProjectEvent = z.infer<typeof ProjectEventSchema>;
-export type RenderHistory = z.infer<typeof RenderHistorySchema>;
+export type TemplateVariation = z.infer<typeof TemplateVariationSchema>;
 
 // --- Project ---
 export const ProjectSchema = z.object({
@@ -120,24 +167,13 @@ export const ProjectSchema = z.object({
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     selectedTemplateId: z.string().optional(),
+    selectedBackgroundAssetId: z.string().optional(),
+    selectedPackId: z.string().optional(),
     lastVisualScore: z.number().optional(),
     aspectRatio: z.enum(['9:16', '16:9']),
     status: z.enum(['draft', 'review', 'approved', 'rendering', 'completed', 'published']).default('draft'),
     timeline: TimelineSchema.optional(),
     scenes: z.array(ProjectSceneSchema).default([]),
-    comments: z.array(ProjectCommentSchema).default([]), // V6
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
-
-export const RenderJobSchema = z.object({
-    id: z.string().uuid(),
-    projectId: z.string().uuid(),
-    type: z.enum(['alignment', 'render']),
-    status: z.enum(['queued', 'processing', 'completed', 'failed']),
-    progress: z.number().default(0),
-    createdAt: z.string().datetime(),
-    outputPath: z.string().optional(),
-});
-
-export type RenderJob = z.infer<typeof RenderJobSchema>;

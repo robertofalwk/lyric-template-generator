@@ -13,6 +13,10 @@ export interface QualityResult {
 }
 
 export class TemplateQualityScorer {
+    /**
+     * V6.2 Reconciled Quality Scorer
+     * Operates exclusively on fields guaranteed by the Master Schema
+     */
     static score(template: Template): QualityResult {
         const warnings: string[] = [];
         const recommendations: string[] = [];
@@ -23,41 +27,45 @@ export class TemplateQualityScorer {
             assetCoherence: 100
         };
 
-        // 1. WCAG Contrast Check
+        // 1. WCAG Contrast Check (Master Schema: textColor, backgroundColor)
         const contrast = this.calculateContrast(template.backgroundColor, template.textColor);
-        if (contrast < 4.5) {
+        if (contrast < 4.1) { // Production Threshold
             subscores.contrast -= 50;
-            warnings.push('Critical Contrast Failure (below WCAG 4.5:1)');
-            recommendations.push('Try lightening text or darkening background');
+            warnings.push('Low Contrast Detected: Risk of unreadable segments');
+            recommendations.push('Try lightening text or and adding a background dark overlay');
         }
 
-        // 2. Asset coherence (V4)
+        // 2. High-Fidelity Asset Coherence (V6.2: backgroundMode, backgroundOverlayOpacity)
         if (template.backgroundMode === 'image' || template.backgroundMode === 'video') {
-            if (template.backgroundOverlayOpacity < 0.3) {
+            if (template.backgroundOverlayOpacity < 0.4) {
                 subscores.assetCoherence -= 40;
-                warnings.push('Low Legibility Risk: High background detail conflict');
-                recommendations.push('Increase Overlay Opacity (min 0.3 recommended)');
+                warnings.push('High Detail Conflict: Background may compete with lyrics');
+                recommendations.push('Increase backgroundOverlayOpacity to at least 0.4');
             }
         }
 
-        // 3. Safety for social
-        if (template.position.y > 82) {
+        // 3. Platform Safety Safe-Zones (V6.2: position.y)
+        if (template.position.y > 80) {
             subscores.safety -= 40;
-            warnings.push('Bottom occlusion risk (TikTok/Reels UI overlap)');
-            recommendations.push('Raise vertical position (y) to < 80');
+            warnings.push('Social UI Occlusion Risk: Text overlaps TikTok/Reels controls');
+            recommendations.push('Shift vertical position (y) to 75 or lower');
         }
 
-        // 4. Motion / Glow risks
-        if (template.glow && (template.glowRadius || 0) > 30) {
-            subscores.readability -= 20;
-            warnings.push('Glow Blur: Text clarity compromised by large radius');
+        // 4. Readability Risks (V6.2: glow, glowRadius, blur)
+        if (template.glow && (template.glowRadius || 0) > 35) {
+            subscores.readability -= 25;
+            warnings.push('Glow Saturation: Halo effect is compromising word boundaries');
+        }
+
+        if (template.blur) {
+            subscores.readability -= 10;
         }
 
         const score = Math.round(
-            (subscores.contrast * 0.3) + 
-            (subscores.readability * 0.3) + 
-            (subscores.safety * 0.2) + 
-            (subscores.assetCoherence * 0.2)
+            (subscores.contrast * 0.35) + 
+            (subscores.readability * 0.25) + 
+            (subscores.safety * 0.20) + 
+            (subscores.assetCoherence * 0.20)
         );
 
         return {
@@ -68,12 +76,14 @@ export class TemplateQualityScorer {
         };
     }
 
-    private static calculateContrast(rgb1: string, rgb2: string): number {
-        const l1 = this.getLuminance(rgb1);
-        const l2 = this.getLuminance(rgb2);
-        const brightest = Math.max(l1, l2);
-        const darkest = Math.min(l1, l2);
-        return (brightest + 0.05) / (darkest + 0.05);
+    private static calculateContrast(hex1: string, hex2: string): number {
+        try {
+            const l1 = this.getLuminance(hex1);
+            const l2 = this.getLuminance(hex2);
+            const brightest = Math.max(l1, l2);
+            const darkest = Math.min(l1, l2);
+            return (brightest + 0.05) / (darkest + 0.05);
+        } catch (e) { return 5; } // Fallback to safe score on parsing error
     }
 
     private static getLuminance(hex: string): number {

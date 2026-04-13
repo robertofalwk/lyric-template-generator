@@ -19,13 +19,13 @@ export class RenderingService {
         const mp4Path = path.join(outputDir, 'video.mp4');
         const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
         
-        // 1. Resolve Global Baseline
+        // 1. Resolve Global Baseline (V6.2 Consolidated Schema)
         const globalTemplate = customTemplate || await TemplateService.resolve(project.selectedTemplateId || '');
         
         // 2. Fetch Scenes
         const scenes = await projectSceneRepository.findByProjectId(project.id);
         
-        // 3. Resolve Scene Assets
+        // 3. Resolve Scene Manifest with high-fidelity asset resolution
         const sceneManifest = await Promise.all(scenes.map(async s => {
             let assetUrl = null;
             if (s.backgroundAssetId) {
@@ -41,14 +41,14 @@ export class RenderingService {
             return {
                 ...s,
                 assetUrl,
-                template: sceneTemplate
+                template: sceneTemplate // Full reconciled template
             };
         }));
 
-        onProgress(5, 'Bundling V5 Modular Architecture...');
+        onProgress(5, 'Bundling V6.2 Consolidated Payload...');
         const bundleLocation = await bundle({ entryPoint });
 
-        onProgress(20, 'Initializing Scene Master...');
+        onProgress(20, 'Mastering High-Fidelity Signal...');
 
         try {
             const audioSrc = `http://localhost:3000/api/projects/${project.id}/audio`;
@@ -66,7 +66,7 @@ export class RenderingService {
                 inputProps: { 
                     audioSrc,
                     timeline: project.timeline,
-                    // V5 Master Payload
+                    // Fully modelized payload ensures no data loss at frame 0
                     globalTemplate,
                     scenes: sceneManifest,
                     fps: 30
@@ -74,7 +74,7 @@ export class RenderingService {
                 codec: 'h264',
                 onProgress: ({ progress }) => {
                     const mappedProgress = 20 + (progress * 80);
-                    onProgress(Math.floor(mappedProgress), `Slicing & Mastering: ${Math.floor(progress * 100)}%`);
+                    onProgress(Math.floor(mappedProgress), `Studio Master: ${Math.floor(progress * 100)}%`);
                 }
             });
             
@@ -84,7 +84,7 @@ export class RenderingService {
 
             return `/exports/${jobId}.mp4`;
         } catch (error: any) {
-            console.error('[RenderingService] V5 Scene Error:', error);
+            console.error('[RenderingService] V6.2 Render Error:', error);
             throw error;
         }
     }
@@ -92,7 +92,7 @@ export class RenderingService {
     private calculateDuration(project: Project): number {
         if (!project.timeline || !project.timeline.segments.length) return 900; 
         const lastEndMs = Math.max(...project.timeline.segments.map(s => s.endMs));
-        return Math.ceil((lastEndMs / 1000) * 30) + (2 * 30); // Buffer
+        return Math.ceil((lastEndMs / 1000) * 30) + 60; 
     }
 }
 
