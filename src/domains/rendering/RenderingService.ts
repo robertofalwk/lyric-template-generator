@@ -18,7 +18,7 @@ export class RenderingService {
         const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
         
         // Resolve Template
-        const template = customTemplate || TemplateService.resolve(project.selectedTemplateId);
+        const template = customTemplate || await TemplateService.resolve(project.selectedTemplateId);
 
         onProgress(5, 'Bundling Remotion project...');
         const bundleLocation = await bundle({ entryPoint });

@@ -1,4 +1,4 @@
-import { ALLOWED_FONTS, COLOR_PALETTES, STYLE_PRESETS } from '../catalog';
+import { ALLOWED_FONTS, COLOR_PALETTES, STYLE_PRESETS, GENRE_PRESETS } from '../catalog';
 
 export interface VisualIntent {
     mood: keyof typeof STYLE_PRESETS;
@@ -16,51 +16,57 @@ export class IntentParser {
         const text = prompt.toLowerCase();
         
         // Defaults
-        let mood: keyof typeof STYLE_PRESETS = 'clean';
-        let palette: keyof typeof COLOR_PALETTES = 'minimal-dark';
-        let font = 'Inter';
-        let backgroundMode: 'color' | 'blur' | 'transparent' = 'color';
-        let isNeon = false;
-        let emphasis: 'word' | 'line' = 'word';
-        let intensity: 'low' | 'medium' | 'high' = 'medium';
-        let platform: 'reels' | 'youtube' | 'generic' = 'generic';
+        let intent: VisualIntent = {
+            mood: 'clean',
+            palette: 'minimal-dark',
+            font: 'Inter',
+            backgroundMode: 'color',
+            isNeon: false,
+            emphasis: 'word',
+            intensity: 'medium',
+            platform: 'generic'
+        };
 
-        // Mood & Category detection
-        if (text.includes('agressivo') || text.includes('impacto') || text.includes('trap') || text.includes('funke')) mood = 'aggressive';
-        if (text.includes('elegante') || text.includes('suave') || text.includes('luxury') || text.includes('serif')) mood = 'elegant';
-        if (text.includes('cyber') || text.includes('futurist') || text.includes('neon')) mood = 'aggressive'; 
-        if (text.includes('clean') || text.includes('minimal') || text.includes('moderno')) mood = 'clean';
-
-        // Intensity detection
-        if (text.includes('calmo') || text.includes('discreto') || text.includes('leve')) intensity = 'low';
-        if (text.includes('extremo') || text.includes('gritoso') || text.includes('brilhando muito')) intensity = 'high';
-
-        // Palette detection
-        if (text.includes('neon') || text.includes('roxo') || text.includes('cyan')) {
-            palette = 'neon-purple';
-            isNeon = true;
+        // 1. Genre Inference
+        for (const [genre, config] of Object.entries(GENRE_PRESETS)) {
+            if (text.includes(genre)) {
+                intent.mood = config.mood as any;
+                intent.palette = config.palette as any;
+                intent.font = config.font;
+                intent.emphasis = config.emphasis as any;
+            }
         }
-        if (text.includes('dourado') || text.includes('gold') || text.includes('premium')) palette = 'cinematic-gold';
-        if (text.includes('branco') || text.includes('light')) palette = 'minimal-light';
-        if (text.includes('sunset') || text.includes('vermelho')) palette = 'sunset-vibe';
-        if (text.includes('matrix') || text.includes('verde')) palette = 'toxic-green';
 
-        // Font suggestion
-        if (mood === 'aggressive') font = 'Archivo Black';
-        if (mood === 'elegant') font = 'Playfair Display';
-        if (isNeon) font = 'Orbitron';
-        if (text.includes('manuscrito') || text.includes('cursive')) font = 'Montserrat';
-        if (text.includes('techno')) font = 'Orbitron';
+        // 2. Specific Mood detection (Overwrites genre)
+        if (text.includes('agressivo') || text.includes('impacto')) intent.mood = 'impactful';
+        if (text.includes('elegante') || text.includes('suave') || text.includes('premium')) intent.mood = 'elegant';
+        if (text.includes('retro') || text.includes('antigo')) intent.mood = 'retro';
 
-        // Background / Effects
-        if (text.includes('blur') || text.includes('fundo desfocado')) backgroundMode = 'blur';
-        if (text.includes('transparente') || text.includes('reels')) backgroundMode = 'transparent';
-        if (text.includes('legendas') || text.includes('frase')) emphasis = 'line';
+        // 3. Palette Adjustments
+        if (text.includes('neon') || text.includes('cybe')) {
+            intent.palette = 'cyber-punk';
+            intent.isNeon = true;
+        }
+        if (text.includes('roxo') || text.includes('purple')) intent.palette = 'neon-purple';
+        if (text.includes('ouro') || text.includes('gold') || text.includes('dourado')) intent.palette = 'cinematic-gold';
+        if (text.includes('quente') || text.includes('vermelho') || text.includes('sunset')) intent.palette = 'sunset-vibe';
 
-        // Platform
-        if (text.includes('reels') || text.includes('shorts') || text.includes('tiktok')) platform = 'reels';
-        if (text.includes('hd') || text.includes('cinema')) platform = 'youtube';
+        // 4. Dimensions
+        if (text.includes('reels') || text.includes('tiktok') || text.includes('short')) intent.platform = 'reels';
+        if (text.includes('youtube') || text.includes('widescreen')) intent.platform = 'youtube';
 
-        return { mood, palette, font, backgroundMode, isNeon, emphasis, intensity, platform };
+        if (text.includes('brilhante') || text.includes('muito')) intent.intensity = 'high';
+        if (text.includes('discreto') || text.includes('pouco')) intent.intensity = 'low';
+
+        // 5. Layout
+        if (text.includes('frase') || text.includes('legenda')) intent.emphasis = 'line';
+        if (text.includes('fundo desfocado') || text.includes('blur')) intent.backgroundMode = 'blur';
+        if (text.includes('transparente')) intent.backgroundMode = 'transparent';
+
+        return intent;
+    }
+
+    static getInterpretationSummary(intent: VisualIntent): string {
+        return `Mood: ${intent.mood}, Palette: ${intent.palette}, Focus: ${intent.emphasis}`;
     }
 }

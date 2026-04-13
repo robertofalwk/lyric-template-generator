@@ -27,7 +27,11 @@ export class TemplateRepository {
         return TemplateSchema.parse(JSON.parse(row.data));
     }
 
-    async save(template: Template): Promise<void> {
+    /**
+     * Saves a template. 
+     * @param options.createVersion If true, snapshots the state into template_versions.
+     */
+    async save(template: Template, options: { createVersion?: boolean } = {}): Promise<void> {
         const stmt = db.prepare(`
             INSERT OR REPLACE INTO templates (id, name, category, data, sourceType, isFavorite, createdAt)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -39,29 +43,41 @@ export class TemplateRepository {
             JSON.stringify(template),
             template.metadata?.sourceType || 'manual',
             template.metadata?.isFavorite ? 1 : 0,
-            new Date().toISOString()
+            template.id.startsWith('draft_') ? new Date().toISOString() : (template.id ? undefined : new Date().toISOString()) // rudimentary logic
         );
 
-        // Versioning logic: Save the current state to versions
-        const versionStmt = db.prepare(`
-            INSERT INTO template_versions (id, templateId, version, prompt, data, createdAt)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `);
-        versionStmt.run(
-            uuidv4(),
-            template.id,
-            template.metadata?.version || 1,
-            template.metadata?.originalPrompt || 'Manual update',
-            JSON.stringify(template),
-            new Date().toISOString()
-        );
+        if (options.createVersion) {
+            const versionStmt = db.prepare(`
+                INSERT INTO template_versions (id, templateId, version, prompt, data, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            versionStmt.run(
+                uuidv4(),
+                template.id,
+                template.metadata?.version || 1,
+                template.metadata?.originalPrompt || 'Snapshot',
+                JSON.stringify(template),
+                new Date().toISOString()
+            );
+        }
+    }
+
+    async restoreVersion(templateId: string, versionId: string): Promise<Template> {
+        const stmt = db.prepare('SELECT data FROM template_versions WHERE id = ? AND templateId = ?');
+        const row = stmt.get(versionId, templateId) as any;
+        if (!row) throw new Error('Version not found');
+
+        const restoredData = TemplateSchema.parse(JSON.parse(row.data));
+        // Update main template record to this state
+        await this.save(restoredData, { createVersion: false });
+        return restoredData;
     }
 
     async setFavorite(id: string, isFavorite: boolean): Promise<void> {
         const template = await this.findById(id);
         if (template) {
             template.metadata = { ...template.metadata, isFavorite };
-            await this.save(template);
+            await this.save(template, { createVersion: false });
         }
     }
 
@@ -71,11 +87,8 @@ export class TemplateRepository {
     }
 
     async getHistory(id: string): Promise<any[]> {
-        const stmt = db.prepare('SELECT * FROM template_versions WHERE templateId = ? ORDER BY version DESC');
-        return stmt.all(id).map((v: any) => ({
-            ...v,
-            data: JSON.parse(v.data)
-        }));
+        const stmt = db.prepare('SELECT id, version, prompt, createdAt FROM template_versions WHERE templateId = ? ORDER BY version DESC, createdAt DESC');
+        return stmt.all(id);
     }
 }
 

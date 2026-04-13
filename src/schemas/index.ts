@@ -73,7 +73,10 @@ export const TemplateSchema = z.object({
     backgroundBlur: z.number().default(0),
     backgroundOverlayColor: z.string().default('transparent'),
     backgroundOverlayOpacity: z.number().default(0),
-    backgroundImagePrompt: z.string().optional(), // For future AI generation
+    backgroundAssetType: z.enum(['none', 'image', 'video', 'generated']).default('none'),
+    backgroundAssetId: z.string().optional(),
+    backgroundPrompt: z.string().optional(),
+    motionHints: z.array(z.string()).default([]),
     
     // AI Metadata
     metadata: z.object({
