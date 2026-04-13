@@ -1,7 +1,8 @@
 import { renderMedia, bundle } from '@remotion/renderer';
-import { Project, Template } from '@/src/schemas';
+import { Project, Template, ProjectScene } from '@/src/schemas';
 import { TemplateService } from '../templates/TemplateService';
 import { backgroundAssetRepository } from '@/src/server/repositories/BackgroundAssetRepository';
+import { projectSceneRepository } from '@/src/server/repositories/ProjectSceneRepository';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -18,23 +19,36 @@ export class RenderingService {
         const mp4Path = path.join(outputDir, 'video.mp4');
         const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
         
-        // 1. Resolve Template
-        const template = customTemplate || await TemplateService.resolve(project.selectedTemplateId || '');
-
-        // 2. Resolve Asset (if present)
-        let assetUrl = null;
-        if (template.backgroundAssetId) {
-            const asset = await backgroundAssetRepository.findById(template.backgroundAssetId);
-            if (asset) {
-                // For local worker nodes, we point to the public path or static dir
-                assetUrl = `http://localhost:3000${asset.publicPath}`;
+        // 1. Resolve Global Baseline
+        const globalTemplate = customTemplate || await TemplateService.resolve(project.selectedTemplateId || '');
+        
+        // 2. Fetch Scenes
+        const scenes = await projectSceneRepository.findByProjectId(project.id);
+        
+        // 3. Resolve Scene Assets
+        const sceneManifest = await Promise.all(scenes.map(async s => {
+            let assetUrl = null;
+            if (s.backgroundAssetId) {
+                const asset = await backgroundAssetRepository.findById(s.backgroundAssetId);
+                assetUrl = asset ? `http://localhost:3000${asset.publicPath}` : null;
             }
-        }
+            
+            let sceneTemplate = null;
+            if (s.templateId) {
+                sceneTemplate = await TemplateService.resolve(s.templateId);
+            }
 
-        onProgress(5, 'Bundling Remotion project...');
+            return {
+                ...s,
+                assetUrl,
+                template: sceneTemplate
+            };
+        }));
+
+        onProgress(5, 'Bundling V5 Modular Architecture...');
         const bundleLocation = await bundle({ entryPoint });
 
-        onProgress(20, 'Starting V4 Media Engine...');
+        onProgress(20, 'Initializing Scene Master...');
 
         try {
             const audioSrc = `http://localhost:3000/api/projects/${project.id}/audio`;
@@ -52,16 +66,15 @@ export class RenderingService {
                 inputProps: { 
                     audioSrc,
                     timeline: project.timeline,
-                    template: {
-                        ...template,
-                        // Override background with resolved asset URL if necessary
-                        backgroundAssetUrl: assetUrl
-                    }
+                    // V5 Master Payload
+                    globalTemplate,
+                    scenes: sceneManifest,
+                    fps: 30
                 },
                 codec: 'h264',
                 onProgress: ({ progress }) => {
                     const mappedProgress = 20 + (progress * 80);
-                    onProgress(Math.floor(mappedProgress), `Mastering: ${Math.floor(progress * 100)}%`);
+                    onProgress(Math.floor(mappedProgress), `Slicing & Mastering: ${Math.floor(progress * 100)}%`);
                 }
             });
             
@@ -71,7 +84,7 @@ export class RenderingService {
 
             return `/exports/${jobId}.mp4`;
         } catch (error: any) {
-            console.error('[RenderingService] V4 Master Error:', error);
+            console.error('[RenderingService] V5 Scene Error:', error);
             throw error;
         }
     }
@@ -79,7 +92,7 @@ export class RenderingService {
     private calculateDuration(project: Project): number {
         if (!project.timeline || !project.timeline.segments.length) return 900; 
         const lastEndMs = Math.max(...project.timeline.segments.map(s => s.endMs));
-        return Math.ceil((lastEndMs / 1000) * 30) + 60; 
+        return Math.ceil((lastEndMs / 1000) * 30) + (2 * 30); // Buffer
     }
 }
 

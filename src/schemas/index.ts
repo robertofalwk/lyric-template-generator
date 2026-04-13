@@ -31,10 +31,31 @@ export const BackgroundAssetSchema = z.object({
     sourceType: z.enum(['uploaded', 'generated', 'stock']),
     localPath: z.string(),
     publicPath: z.string(),
+    thumbnailPath: z.string().optional(),
+    proxyPath: z.string().optional(),
     prompt: z.string().optional(),
     tags: z.array(z.string()).default([]),
     metadata: z.record(z.any()).default({}),
     dominantColors: z.array(z.string()).default([]),
+    createdAt: z.string().datetime(),
+});
+
+// --- Project Scenes (V5) ---
+export const ProjectSceneSchema = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    name: z.string(),
+    startMs: z.number(),
+    endMs: z.number(),
+    sectionType: z.enum(['intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'outro', 'custom']).default('verse'),
+    templateId: z.string().optional(),
+    backgroundAssetId: z.string().optional(),
+    packId: z.string().optional(),
+    intensity: z.enum(['low', 'medium', 'high']).default('medium'),
+    transitionIn: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
+    transitionOut: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
+    visualScore: z.number().optional(),
+    settings: z.record(z.any()).default({}),
     createdAt: z.string().datetime(),
 });
 
@@ -81,14 +102,12 @@ export const TemplateSchema = z.object({
     highlightMode: z.enum(['word', 'line']),
     wordScaleActive: z.number().default(1), 
     
-    // Background (Conceptual + Linked)
+    // Background
     backgroundMode: z.enum(['color', 'image', 'blur', 'video', 'transparent']),
     backgroundColor: z.string().default('#000000'),
     backgroundBlur: z.number().default(0),
     backgroundOverlayColor: z.string().default('transparent'),
     backgroundOverlayOpacity: z.number().default(0),
-    
-    // V4 Real Assets
     backgroundAssetType: z.enum(['none', 'image', 'video', 'generated']).default('none'),
     backgroundAssetId: z.string().optional(),
     backgroundPrompt: z.string().optional(),
@@ -126,21 +145,13 @@ export const StylePackSchema = z.object({
     createdAt: z.string().datetime(),
 });
 
-export const TemplateVariationSchema = z.object({
-    id: z.string(),
-    type: z.enum(['safe', 'balanced', 'bold']),
-    template: TemplateSchema,
-    score: z.number(),
-    explanation: z.string().optional(),
-});
-
 export type Word = z.infer<typeof WordSchema>;
 export type Segment = z.infer<typeof SegmentSchema>;
 export type Timeline = z.infer<typeof TimelineSchema>;
 export type Template = z.infer<typeof TemplateSchema>;
 export type BackgroundAsset = z.infer<typeof BackgroundAssetSchema>;
+export type ProjectScene = z.infer<typeof ProjectSceneSchema>;
 export type StylePack = z.infer<typeof StylePackSchema>;
-export type TemplateVariation = z.infer<typeof TemplateVariationSchema>;
 
 // --- Project ---
 export const ProjectSchema = z.object({
@@ -157,6 +168,7 @@ export const ProjectSchema = z.object({
     aspectRatio: z.enum(['9:16', '16:9']),
     status: z.enum(['draft', 'ready', 'processing', 'completed', 'failed']),
     timeline: TimelineSchema.optional(),
+    scenes: z.array(ProjectSceneSchema).default([]), // V5 Scene Array
 });
 
 export type Project = z.infer<typeof ProjectSchema>;

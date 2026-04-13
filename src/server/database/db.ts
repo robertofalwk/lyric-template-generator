@@ -16,9 +16,9 @@ db.exec(`
         lyricsRaw TEXT,
         lyricsNormalized TEXT,
         selectedTemplateId TEXT,
-        selectedBackgroundAssetId TEXT, -- V4 Asset Snap
-        selectedPackId TEXT,            -- V4 Pack Snap
-        lastVisualScore INTEGER,        -- V4 Scoring
+        selectedBackgroundAssetId TEXT,
+        selectedPackId TEXT,
+        lastVisualScore INTEGER,
         aspectRatio TEXT,
         status TEXT,
         alignmentStatus TEXT,
@@ -29,13 +29,34 @@ db.exec(`
         timeline TEXT -- JSON
     );
 
+    CREATE TABLE IF NOT EXISTS project_scenes (
+        id TEXT PRIMARY KEY,
+        projectId TEXT NOT NULL,
+        name TEXT NOT NULL,
+        startMs INTEGER NOT NULL,
+        endMs INTEGER NOT NULL,
+        sectionType TEXT DEFAULT 'verse', -- intro, verse, chorus, bridge, etc
+        templateId TEXT, -- Override
+        backgroundAssetId TEXT, -- Override
+        packId TEXT, -- Override
+        intensity TEXT DEFAULT 'medium',
+        settings TEXT, -- JSON Overrides
+        transitionIn TEXT DEFAULT 'fade',
+        transitionOut TEXT DEFAULT 'fade',
+        visualScore INTEGER,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(projectId) REFERENCES projects(id)
+    );
+
     CREATE TABLE IF NOT EXISTS background_assets (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        type TEXT NOT NULL, -- image, video, gradient, generated
-        sourceType TEXT NOT NULL, -- uploaded, generated, stock
+        type TEXT NOT NULL,
+        sourceType TEXT NOT NULL,
         localPath TEXT NOT NULL,
         publicPath TEXT NOT NULL,
+        thumbnailPath TEXT, -- V5 Optimization
+        proxyPath TEXT,      -- V5 Optimization
         prompt TEXT,
         tags TEXT, -- JSON
         metadata TEXT, -- JSON
@@ -47,7 +68,7 @@ db.exec(`
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
-        config TEXT, -- JSON (linked templates, preferred palettes, fonts)
+        config TEXT, -- JSON
         category TEXT,
         isPublic INTEGER DEFAULT 0,
         createdAt TEXT NOT NULL
@@ -92,9 +113,8 @@ db.exec(`
     );
 `);
 
-// Migration scripts for V4
-try { db.exec(`ALTER TABLE projects ADD COLUMN selectedBackgroundAssetId TEXT;`); } catch(e){}
-try { db.exec(`ALTER TABLE projects ADD COLUMN selectedPackId TEXT;`); } catch(e){}
-try { db.exec(`ALTER TABLE projects ADD COLUMN lastVisualScore INTEGER;`); } catch(e){}
+// Migration scripts for V5
+try { db.exec(`ALTER TABLE background_assets ADD COLUMN thumbnailPath TEXT;`); } catch(e){}
+try { db.exec(`ALTER TABLE background_assets ADD COLUMN proxyPath TEXT;`); } catch(e){}
 
 export default db;
