@@ -23,6 +23,21 @@ export const TimelineSchema = z.object({
     segments: z.array(SegmentSchema),
 });
 
+// --- Background Assets ---
+export const BackgroundAssetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.enum(['image', 'video', 'gradient', 'generated-image', 'generated-video']),
+    sourceType: z.enum(['uploaded', 'generated', 'stock']),
+    localPath: z.string(),
+    publicPath: z.string(),
+    prompt: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    metadata: z.record(z.any()).default({}),
+    dominantColors: z.array(z.string()).default([]),
+    createdAt: z.string().datetime(),
+});
+
 // --- Template ---
 export const TemplateSchema = z.object({
     id: z.string(),
@@ -54,31 +69,35 @@ export const TemplateSchema = z.object({
     // Layout
     alignment: z.enum(['left', 'center', 'right']).default('center'),
     position: z.object({
-        x: z.number().default(50), // Center X %
-        y: z.number().default(50), // Center Y %
+        x: z.number().default(50), 
+        y: z.number().default(50), 
     }),
-    positionY: z.number().optional(), // Top Offset % (Legacy support or explicit)
-    maxTextWidth: z.number().default(80), // % of screen
+    maxTextWidth: z.number().default(80), 
     safeArea: z.boolean().default(true),
     
     // Animation
     animationIn: z.enum(['fade', 'zoom', 'slide-up', 'none']),
     animationOut: z.enum(['fade', 'zoom', 'slide-down', 'none']),
     highlightMode: z.enum(['word', 'line']),
-    wordScaleActive: z.number().default(1), // Scale factor for active word
+    wordScaleActive: z.number().default(1), 
     
-    // Background
+    // Background (Conceptual + Linked)
     backgroundMode: z.enum(['color', 'image', 'blur', 'video', 'transparent']),
     backgroundColor: z.string().default('#000000'),
     backgroundBlur: z.number().default(0),
     backgroundOverlayColor: z.string().default('transparent'),
     backgroundOverlayOpacity: z.number().default(0),
+    
+    // V4 Real Assets
     backgroundAssetType: z.enum(['none', 'image', 'video', 'generated']).default('none'),
     backgroundAssetId: z.string().optional(),
     backgroundPrompt: z.string().optional(),
+    backgroundFit: z.enum(['cover', 'contain', 'fill']).default('cover'),
+    backgroundPosition: z.string().default('center'),
+    backgroundBlendMode: z.string().default('normal'),
     motionHints: z.array(z.string()).default([]),
     
-    // AI Metadata
+    // Metadata
     metadata: z.object({
         sourceType: z.enum(['stock', 'ai-generated', 'ai-refined', 'manual']).default('stock'),
         originalPrompt: z.string().optional(),
@@ -90,6 +109,23 @@ export const TemplateSchema = z.object({
     }).default({}),
 });
 
+// --- Style Packs ---
+export const StylePackSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    category: z.string().default('general'),
+    config: z.object({
+        templateIds: z.array(z.string()),
+        backgroundAssetIds: z.array(z.string()),
+        fonts: z.array(z.string()),
+        palettes: z.array(z.record(z.string())),
+        intensityLevels: z.array(z.enum(['low', 'medium', 'high'])),
+    }),
+    isPublic: z.boolean().default(false),
+    createdAt: z.string().datetime(),
+});
+
 export const TemplateVariationSchema = z.object({
     id: z.string(),
     type: z.enum(['safe', 'balanced', 'bold']),
@@ -98,56 +134,43 @@ export const TemplateVariationSchema = z.object({
     explanation: z.string().optional(),
 });
 
+export type Word = z.infer<typeof WordSchema>;
+export type Segment = z.infer<typeof SegmentSchema>;
+export type Timeline = z.infer<typeof TimelineSchema>;
+export type Template = z.infer<typeof TemplateSchema>;
+export type BackgroundAsset = z.infer<typeof BackgroundAssetSchema>;
+export type StylePack = z.infer<typeof StylePackSchema>;
 export type TemplateVariation = z.infer<typeof TemplateVariationSchema>;
 
 // --- Project ---
-export const ProjectSettingsSchema = z.object({
-    useVocalIsolation: z.boolean().default(false),
-    language: z.string().default('pt'),
-    wordLevelTiming: z.boolean().default(true),
-    globalOffsetMs: z.number().default(0),
-});
-
 export const ProjectSchema = z.object({
     id: z.string().uuid(),
     title: z.string().min(1),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     audioOriginalPath: z.string(),
-    audioProcessedPath: z.string().optional(),
     lyricsRaw: z.string(),
-    lyricsNormalized: z.string().optional(),
-    selectedTemplateId: z.string(),
+    selectedTemplateId: z.string().optional(),
+    selectedBackgroundAssetId: z.string().optional(),
+    selectedPackId: z.string().optional(),
+    lastVisualScore: z.number().optional(),
     aspectRatio: z.enum(['9:16', '16:9']),
     status: z.enum(['draft', 'ready', 'processing', 'completed', 'failed']),
-    alignmentStatus: z.enum(['pending', 'processing', 'completed', 'failed']),
-    renderStatus: z.enum(['pending', 'processing', 'completed', 'failed']),
-    exportFormats: z.array(z.enum(['mp4', 'srt', 'ass', 'lrc'])).default(['mp4']),
-    settings: ProjectSettingsSchema,
-    latestTimelinePath: z.string().optional(),
-    timeline: TimelineSchema.optional(), // Infused when loaded for frontend
+    timeline: TimelineSchema.optional(),
 });
 
-// --- Jobs ---
+export type Project = z.infer<typeof ProjectSchema>;
+
 export const RenderJobSchema = z.object({
     id: z.string().uuid(),
     projectId: z.string().uuid(),
-    type: z.enum(['alignment', 'render']).default('render'),
+    type: z.enum(['alignment', 'render']),
     status: z.enum(['queued', 'processing', 'completed', 'failed']),
-    progress: z.number().min(0).max(100).default(0),
+    progress: z.number().default(0),
     createdAt: z.string().datetime(),
-    startedAt: z.string().datetime().optional(),
-    finishedAt: z.string().datetime().optional(),
     outputPath: z.string().optional(),
-    logs: z.array(z.string()).default([]),
-    payload: z.any().optional(), // Metadata for the job (e.g. custom template)
+    payload: z.any().optional(),
     errorMessage: z.string().optional(),
 });
 
-export type Word = z.infer<typeof WordSchema>;
-export type Segment = z.infer<typeof SegmentSchema>;
-export type Timeline = z.infer<typeof TimelineSchema>;
-export type Template = z.infer<typeof TemplateSchema>;
-export type Project = z.infer<typeof ProjectSchema>;
 export type RenderJob = z.infer<typeof RenderJobSchema>;
-export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;

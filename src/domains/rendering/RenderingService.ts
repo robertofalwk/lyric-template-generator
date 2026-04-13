@@ -1,6 +1,7 @@
 import { renderMedia, bundle } from '@remotion/renderer';
-import { Project } from '@/src/schemas';
+import { Project, Template } from '@/src/schemas';
 import { TemplateService } from '../templates/TemplateService';
+import { backgroundAssetRepository } from '@/src/server/repositories/BackgroundAssetRepository';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -8,7 +9,7 @@ export class RenderingService {
     async render(
         project: Project, 
         jobId: string, 
-        customTemplate?: any,
+        customTemplate?: Template,
         onProgress: (progress: number, log: string) => void
     ) {
         const outputDir = path.join(process.cwd(), 'storage', 'renders', jobId);
@@ -17,17 +18,25 @@ export class RenderingService {
         const mp4Path = path.join(outputDir, 'video.mp4');
         const entryPoint = path.join(process.cwd(), 'remotion', 'Root.tsx');
         
-        // Resolve Template
-        const template = customTemplate || await TemplateService.resolve(project.selectedTemplateId);
+        // 1. Resolve Template
+        const template = customTemplate || await TemplateService.resolve(project.selectedTemplateId || '');
+
+        // 2. Resolve Asset (if present)
+        let assetUrl = null;
+        if (template.backgroundAssetId) {
+            const asset = await backgroundAssetRepository.findById(template.backgroundAssetId);
+            if (asset) {
+                // For local worker nodes, we point to the public path or static dir
+                assetUrl = `http://localhost:3000${asset.publicPath}`;
+            }
+        }
 
         onProgress(5, 'Bundling Remotion project...');
         const bundleLocation = await bundle({ entryPoint });
 
-        onProgress(20, 'Starting render engine...');
+        onProgress(20, 'Starting V4 Media Engine...');
 
         try {
-            // Important: Use a URL that Remotion can reach. 
-            // In a local worker, we point to the local API.
             const audioSrc = `http://localhost:3000/api/projects/${project.id}/audio`;
 
             await renderMedia({
@@ -43,12 +52,16 @@ export class RenderingService {
                 inputProps: { 
                     audioSrc,
                     timeline: project.timeline,
-                    template
+                    template: {
+                        ...template,
+                        // Override background with resolved asset URL if necessary
+                        backgroundAssetUrl: assetUrl
+                    }
                 },
                 codec: 'h264',
                 onProgress: ({ progress }) => {
                     const mappedProgress = 20 + (progress * 80);
-                    onProgress(Math.floor(mappedProgress), `Rendering: ${Math.floor(progress * 100)}%`);
+                    onProgress(Math.floor(mappedProgress), `Mastering: ${Math.floor(progress * 100)}%`);
                 }
             });
             
@@ -58,13 +71,13 @@ export class RenderingService {
 
             return `/exports/${jobId}.mp4`;
         } catch (error: any) {
-            console.error('[RenderingService] Error:', error);
+            console.error('[RenderingService] V4 Master Error:', error);
             throw error;
         }
     }
 
     private calculateDuration(project: Project): number {
-        if (!project.timeline || project.timeline.segments.length === 0) return 900; 
+        if (!project.timeline || !project.timeline.segments.length) return 900; 
         const lastEndMs = Math.max(...project.timeline.segments.map(s => s.endMs));
         return Math.ceil((lastEndMs / 1000) * 30) + 60; 
     }

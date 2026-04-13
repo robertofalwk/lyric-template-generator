@@ -6,76 +6,65 @@ export interface QualityResult {
         contrast: number;
         readability: number;
         safety: number;
-        aesthetic: number;
+        assetCoherence: number;
     };
     warnings: string[];
+    recommendations: string[];
 }
 
 export class TemplateQualityScorer {
     static score(template: Template): QualityResult {
         const warnings: string[] = [];
+        const recommendations: string[] = [];
         const subscores = {
             contrast: 100,
             readability: 100,
             safety: 100,
-            aesthetic: 100
+            assetCoherence: 100
         };
 
-        // 1. Perceived Contrast Ratio
-        if (template.backgroundMode === 'color') {
-            const contrast = this.calculateContrast(template.backgroundColor, template.textColor);
-            if (contrast < 4.5) {
-                subscores.contrast -= 50;
-                warnings.push('Poor text contrast (WCAG alert)');
+        // 1. WCAG Contrast Check
+        const contrast = this.calculateContrast(template.backgroundColor, template.textColor);
+        if (contrast < 4.5) {
+            subscores.contrast -= 50;
+            warnings.push('Critical Contrast Failure (below WCAG 4.5:1)');
+            recommendations.push('Try lightening text or darkening background');
+        }
+
+        // 2. Asset coherence (V4)
+        if (template.backgroundMode === 'image' || template.backgroundMode === 'video') {
+            if (template.backgroundOverlayOpacity < 0.3) {
+                subscores.assetCoherence -= 40;
+                warnings.push('Low Legibility Risk: High background detail conflict');
+                recommendations.push('Increase Overlay Opacity (min 0.3 recommended)');
             }
         }
 
-        // 2. Mobile Readability (Font Size & Tracking)
-        if (template.fontSize < 32) {
-            subscores.readability -= 30;
-            warnings.push('Font size too small for mobile (min 32px recommended)');
-        }
-        if (template.letterSpacing < -1) {
-            subscores.readability -= 20;
-            warnings.push('Negative tracking might crush letters');
-        }
-
-        // 3. Screen Safety (Safe Area for Social Platforms)
-        // Values are percentages
-        if (template.position.y > 80) {
+        // 3. Safety for social
+        if (template.position.y > 82) {
             subscores.safety -= 40;
-            warnings.push('Bottom occlusion risk (overlap with platform UI)');
-        }
-        if (template.position.y < 15) {
-            subscores.safety -= 30;
-            warnings.push('Top occlusion risk (overlap with camera/info)');
-        }
-        if (template.maxTextWidth > 90) {
-            subscores.safety -= 20;
-            warnings.push('Horizontal safe-zone violation');
+            warnings.push('Bottom occlusion risk (TikTok/Reels UI overlap)');
+            recommendations.push('Raise vertical position (y) to < 80');
         }
 
-        // 4. Aesthetic Consistency
-        if (template.glow && !template.shadow) {
-            subscores.aesthetic -= 10;
-            warnings.push('Glow without shadow might look washed out');
-        }
-        if (template.animationIn === 'none') {
-            subscores.aesthetic -= 20;
-            warnings.push('Static entries feel less premium');
+        // 4. Motion / Glow risks
+        if (template.glow && (template.glowRadius || 0) > 30) {
+            subscores.readability -= 20;
+            warnings.push('Glow Blur: Text clarity compromised by large radius');
         }
 
         const score = Math.round(
-            (subscores.contrast * 0.35) + 
-            (subscores.readability * 0.30) + 
-            (subscores.safety * 0.25) + 
-            (subscores.aesthetic * 0.10)
+            (subscores.contrast * 0.3) + 
+            (subscores.readability * 0.3) + 
+            (subscores.safety * 0.2) + 
+            (subscores.assetCoherence * 0.2)
         );
 
         return {
             score: Math.max(0, score),
             subscores,
-            warnings
+            warnings,
+            recommendations
         };
     }
 
@@ -89,8 +78,7 @@ export class TemplateQualityScorer {
 
     private static getLuminance(hex: string): number {
         const c = hex.replace('#', '');
-        if (c === 'transparent' || c === 'rgba(0,0,0,0)') return 0;
-        
+        if (c === 'transparent' || c.length < 3) return 0;
         let r, g, b;
         if (c.length === 3) {
             r = parseInt(c[0] + c[0], 16) / 255;
@@ -101,10 +89,7 @@ export class TemplateQualityScorer {
             g = parseInt(c.slice(2, 4), 16) / 255;
             b = parseInt(c.slice(4, 6), 16) / 255;
         }
-
-        const a = [r, g, b].map(v => {
-            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-        });
+        const a = [r, g, b].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
         return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
     }
 }
