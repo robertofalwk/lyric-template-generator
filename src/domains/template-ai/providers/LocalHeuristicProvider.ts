@@ -21,12 +21,29 @@ export class LocalHeuristicProvider implements TemplateAIProvider {
             return {
                 ...v,
                 score: score.score,
-                explanation: v.explanation || `Local interpretation of: ${intent.mood}`
+                explanation: `[Local Neural] ${v.explanation || intent.mood}`
             };
         });
     }
 
     async refineTemplate(template: Template, prompt: string): Promise<Template> {
-        return TemplateRefiner.refine(template, prompt);
+        const refined = await TemplateRefiner.refine(template, prompt);
+        
+        // Apply V6 Operational Metadata
+        const metaAware = {
+            ...refined,
+            metadata: {
+                ...refined.metadata,
+                sourceType: 'ai-refined',
+                aiMode: 'local-fallback',
+                providerUsed: this.name,
+                aiRefinedAt: new Date().toISOString()
+            }
+        } as Template;
+
+        const score = TemplateQualityScorer.score(metaAware);
+        metaAware.metadata.qualityScore = score.score;
+
+        return metaAware;
     }
 }
