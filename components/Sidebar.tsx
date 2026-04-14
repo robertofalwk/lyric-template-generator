@@ -596,12 +596,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 {jobs.map(j => (
                                     <div key={j.id} className="p-6 rounded-3xl bg-zinc-900 border border-white/5 flex flex-col gap-4 group hover:border-emerald-500/20 transition-all">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col gap-1">
                                                 <span className="text-[11px] font-bold text-zinc-300 capitalize">{j.type} Render</span>
-                                                <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{new Date(j.createdAt).toLocaleString()} • {j.status}</span>
+                                                <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{new Date(j.createdAt).toLocaleTimeString()} • <span className={j.status === 'completed' ? 'text-emerald-500/80' : 'text-purple-400'}>{j.status}</span></span>
+                                                {j.status === 'completed' && j.finishedAt && j.outputPath && (
+                                                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider">
+                                                        [DONE {new Date(j.finishedAt).toLocaleTimeString()}] • file: {j.outputPath.split('/').pop()}
+                                                    </span>
+                                                )}
                                             </div>
                                             {j.status === 'completed' ? (
-                                                <a href={j.outputPath} download className="p-3 bg-zinc-950 text-emerald-500 rounded-xl shadow-lg hover:scale-110 transition-all"><Download size={18}/></a>
+                                                <a href={j.outputPath} download className="p-3 bg-zinc-950 text-emerald-500 rounded-xl shadow-lg hover:scale-110 transition-all flex items-center gap-2 text-[10px] uppercase font-black tracking-widest">
+                                                    <Download size={14}/> Download
+                                                </a>
                                             ) : (
                                                 <div className="p-3 text-zinc-700 animate-pulse"><Film size={18}/></div>
                                             )}

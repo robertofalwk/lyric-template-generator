@@ -26,6 +26,7 @@ export default function Dashboard() {
     const [appSettings, setAppSettings] = useState<Record<string, string>>({});
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [testResult, setTestResult] = useState<{success?: boolean; error?: string} | null>(null);
+    const [latestRenderJob, setLatestRenderJob] = useState<RenderJob | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +40,21 @@ export default function Dashboard() {
     const saveSettings = async (newSettings: Record<string, string>) => {
         setIsSavingSettings(true);
         try {
+            if (newSettings.ai_provider === 'openai') {
+                const testRes = await fetch('/api/settings/test-studio-ai', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newSettings)
+                });
+                const testData = await testRes.json();
+                if (!testData.success) {
+                    alert(`Cannot save. OpenAI Test Failed: ${testData.error}`);
+                    setTestResult(testData);
+                    setIsSavingSettings(false);
+                    return;
+                }
+            }
+
             const res = await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -55,6 +71,25 @@ export default function Dashboard() {
             setIsSavingSettings(false);
         }
     };
+
+    const fetchLatestRenderJob = useCallback(async () => {
+        if (!project?.id) return;
+        try {
+            const res = await fetch(`/api/projects/${project.id}/jobs`);
+            const jobs: any[] = await res.json();
+            const completedRenders = jobs.filter((j: any) => j.type === 'render' && j.status === 'completed');
+            if (completedRenders.length > 0) {
+                completedRenders.sort((a,b) => new Date(b.finishedAt!).getTime() - new Date(a.finishedAt!).getTime());
+                setLatestRenderJob(completedRenders[0]);
+            } else {
+                setLatestRenderJob(null);
+            }
+        } catch (e) {}
+    }, [project?.id]);
+
+    useEffect(() => {
+        fetchLatestRenderJob();
+    }, [fetchLatestRenderJob]);
 
     const testAI = async () => {
         setTestResult(null);
@@ -261,6 +296,7 @@ export default function Dashboard() {
                         // If job finished, refresh the hub projects list too
                         if (latest.status !== 'processing' && latest.alignmentStatus !== 'processing') {
                             fetchProjects();
+                            fetchLatestRenderJob();
                         }
                     }
                 }
@@ -316,49 +352,95 @@ export default function Dashboard() {
                     <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} accept="audio/*" />
 
                     {/* V7 Studio Header */}
-                    <div className="h-20 border-b border-white/5 bg-zinc-950/40 backdrop-blur-3xl flex items-center justify-between px-10 shrink-0 z-20">
-                        <div className="flex gap-10">
+                    <div className="h-20 border-b border-white/5 bg-zinc-950/40 backdrop-blur-3xl flex items-center justify-between px-6 shrink-0 z-20">
+                        <div className="flex gap-4 items-center">
                             {[
-                                { id: 'hub', icon: LayoutGrid, label: 'Workspace Hub' },
-                                { id: 'preview', icon: PlayCircle, label: 'Visual Monitor' },
-                                { id: 'editor', icon: SlidersHorizontal, label: 'Scene Production' },
-                                { id: 'settings', icon: Settings, label: 'Studio Settings' }
+                                { id: 'hub', icon: LayoutGrid, label: 'Hub' },
+                                { id: 'preview', icon: PlayCircle, label: 'Monitor' },
+                                { id: 'editor', icon: SlidersHorizontal, label: 'Editor' },
+                                { id: 'settings', icon: Settings, label: 'Settings' }
                             ].map(nav => (
                                 <button 
                                     key={nav.id}
                                     onClick={() => setView(nav.id as any)}
-                                    className={`flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-b-2 h-20 group ${view === nav.id ? 'text-white border-white' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}
+                                    className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all border-b-2 h-20 px-3 group ${view === nav.id ? 'text-white border-white' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}
                                 >
-                                    <nav.icon size={14} className={view === nav.id ? 'text-purple-500' : 'group-hover:text-zinc-400'} /> {nav.label}
+                                    <nav.icon size={14} className={view === nav.id ? 'text-purple-500' : 'group-hover:text-zinc-400'} /> <span className="hidden xl:inline">{nav.label}</span>
                                 </button>
                             ))}
                         </div>
                         
-                        <div className="flex items-center gap-6">
-                            {health?.status === 'degraded' && <div className="p-3 bg-yellow-500/10 rounded-xl text-yellow-500"><Activity size={16}/></div>}
-                            <div className="flex gap-4">
+                        <div className="flex items-center gap-4">
+                            {/* Badges */}
+                            <div className="hidden lg:flex items-center gap-2 mr-2">
+                                <span className={`px-2 py-1 text-[8px] font-black uppercase tracking-widest rounded-md ${appSettings.ai_provider === 'openai' ? 'bg-purple-900/40 text-purple-400' : 'bg-blue-900/40 text-blue-400'}`}>
+                                    {appSettings.ai_provider === 'openai' ? 'OpenAI Cloud' : 'Local Neural'}
+                                </span>
+                                {testResult && (
+                                    <span className={`px-2 py-1 text-[8px] font-black uppercase tracking-widest rounded-md ${testResult.success ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-400'}`}>
+                                        AI: {testResult.success ? 'Verified' : 'Failing'}
+                                    </span>
+                                )}
+                            </div>
+
+                            {health?.status === 'degraded' && <div className="p-2 bg-yellow-500/10 rounded-xl text-yellow-500"><Activity size={14}/></div>}
+                            
+                            <div className="flex gap-2">
+                                {latestRenderJob && (
+                                    <a 
+                                        href={latestRenderJob.outputPath || '#'}
+                                        download
+                                        className="px-4 py-2 border border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-wider"
+                                    >
+                                        ⏬ Latest Render
+                                    </a>
+                                )}
+                                <button 
+                                    onClick={async () => {
+                                        if (!project || !activeTemplate) return;
+                                        setIsProcessing(true);
+                                        try {
+                                            const res = await fetch(`/api/projects/${project.id}/export`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ presetId: 'v7_premium_master', formats: ['mp4_h264'], customTemplate: activeTemplate })
+                                            });
+                                            if (!res.ok) throw new Error((await res.json()).error || 'Render err');
+                                            alert('Quick Action Render Started!');
+                                            fetchLatestRenderJob();
+                                        } catch(e:any) {
+                                            alert(e.message);
+                                        } finally {
+                                            setIsProcessing(false);
+                                        }
+                                    }}
+                                    disabled={!project?.timeline || !activeTemplate || isProcessing}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-2 transition-all disabled:opacity-30 disabled:hover:bg-emerald-600 hidden md:flex text-[10px] font-black uppercase tracking-wider shadow-lg shadow-emerald-500/10"
+                                >
+                                    <Box size={14} /> Start Render
+                                </button>
                                 <button 
                                     onClick={handleAutoDirect}
                                     disabled={!project?.timeline || isProcessing}
-                                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-all disabled:opacity-50"
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-all disabled:opacity-50 text-[10px] font-black uppercase tracking-wider"
                                 >
-                                    ✨ Gerar Direção Completa com IA
+                                    ✨ <span className="hidden md:inline">AI Director</span>
                                 </button>
                                 <button 
                                     disabled={isProcessing}
-                                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-all"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-wider"
                                 >
                                     <label className="cursor-pointer flex items-center gap-2">
-                                        📁 {project?.audioOriginalPath ? 'Substituir Áudio' : 'Anexar Áudio'}
+                                        📁 <span className="hidden md:inline">{project?.audioOriginalPath ? 'Swap Audio' : 'Add Audio'}</span>
                                         <input type="file" className="hidden" accept="audio/*" onChange={handleFileUpload} />
                                     </label>
                                 </button>
                             </div>
                             <button 
                                 onClick={() => setView('hub')}
-                                className="px-6 py-2.5 bg-zinc-900 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center gap-3"
+                                className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center gap-2"
                             >
-                                <Plus size={14}/> New Signal
+                                <Plus size={14}/>
                             </button>
                         </div>
                     </div>

@@ -5,11 +5,13 @@ export function middleware(request: NextRequest) {
     const session = request.cookies.get('studio_session');
     const { pathname } = request.nextUrl;
 
-    // 1. Allow access to login, api/auth, and internal static files
+    // 1. Allow access to login, api/auth, public assets, and internal static files
     if (
         pathname.startsWith('/login') || 
         pathname.startsWith('/api/auth') ||
         pathname.startsWith('/_next') ||
+        pathname.startsWith('/exports') ||
+        pathname.startsWith('/uploads') ||
         pathname.includes('favicon.ico')
     ) {
         return NextResponse.next();
