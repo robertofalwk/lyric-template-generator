@@ -405,7 +405,11 @@ export default function Dashboard() {
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({ presetId: 'v7_premium_master', formats: ['mp4_h264'], customTemplate: activeTemplate })
                                             });
-                                            if (!res.ok) throw new Error((await res.json()).error || 'Render err');
+                                            if (!res.ok) {
+                                                const err = await res.json();
+                                                const issuesStr = err.issues ? '\nBlocking Issues:\n' + err.issues.map((i: any) => `* ${i.message}`).join('\n') : '';
+                                                throw new Error(`${err.error || 'Render err'}${issuesStr}`);
+                                            }
                                             alert('Quick Action Render Started!');
                                             fetchLatestRenderJob();
                                         } catch(e:any) {

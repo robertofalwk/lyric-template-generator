@@ -53,8 +53,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const updatedProject = {
             ...project,
             audioOriginalPath: audioPath,
+            audioProcessedPath: undefined,
+            timeline: undefined,
+            latestTimelinePath: undefined,
+            alignmentStatus: 'none' as const,
+            renderStatus: 'none' as const,
+            status: 'draft' as const,
+            errorMessage: undefined,
             updatedAt: new Date().toISOString()
         };
+
+        // Complete reset of the dependent timeline context
+        const { projectSceneRepository } = await import('@/src/server/repositories/ProjectSceneRepository');
+        await projectSceneRepository.deleteByProjectId(id);
 
         await projectRepository.save(updatedProject);
         return NextResponse.json(updatedProject);

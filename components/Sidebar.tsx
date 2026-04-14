@@ -247,7 +247,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             });
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.error || 'Render failure');
+                const issuesStr = err.issues ? '\nBlocking Issues:\n' + err.issues.map((i: any) => `* ${i.message}`).join('\n') : '';
+                throw new Error(`${err.error || 'Render failure'}${issuesStr}`);
             }
             fetchJobs();
             setTab('publish');
@@ -263,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* V7 Tabbed Studio Navigation */}
             <div className="h-16 border-b border-white/5 bg-black/40 px-6 flex items-center justify-between overflow-x-auto custom-scrollbar scrollbar-hide shrink-0">
                 <div className="flex gap-2">
-                    {['monitor', 'director', 'assets', 'library', 'review', 'publish'].map(t => {
+                    {['monitor', 'director', 'review', 'publish'].map(t => {
                         const hasProject = !!currentProject;
                         const hasAudio = !!currentProject?.audioOriginalPath;
                         const hasTimeline = !!currentProject?.timeline;

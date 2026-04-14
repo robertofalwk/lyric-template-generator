@@ -16,8 +16,21 @@ export async function POST(
 
         // 1. Fetch State
         const project = await projectRepository.findById(id);
-        const scenes = await projectSceneRepository.findByProjectId(id);
+        let scenes = await projectSceneRepository.findByProjectId(id);
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+        // Auto-generate scenes if none exist but timeline is ready (MVP Flow Sanitization)
+        if (scenes.length === 0 && project.timeline) {
+            try {
+                const { VisualDirectorService } = await import('@/src/domains/template-ai/services/VisualDirectorService');
+                scenes = await VisualDirectorService.direct(project, project.timeline);
+                for (const scene of scenes) {
+                    await projectSceneRepository.save(scene);
+                }
+            } catch (err) {
+                console.error('[Render Export] Scene auto-generation fallback failed:', err);
+            }
+        }
 
         // 2. Quality Gate (V6 Ops)
         const gate = ProjectQualityGateService.validateForRender(project, scenes);

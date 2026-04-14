@@ -20,9 +20,7 @@ export const Navbar = () => {
             
             <div className="flex items-center gap-6">
                 <div className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
-                    <a href="#" className="hover:text-white transition-colors">Templates</a>
-                    <a href="#" className="hover:text-white transition-colors">Library</a>
-                    <a href="#" className="hover:text-white transition-colors">Docs</a>
+                    {/* Placeholder for future links. Currently removed as part of MVP simplification. */}
                 </div>
                 
                 <div className="h-6 w-[1px] bg-zinc-800 mx-2" />
