@@ -53,6 +53,11 @@ export class ProjectRepository {
         );
     }
 
+    async updateStatus(id: string, status: Project['status']): Promise<void> {
+        const stmt = db.prepare('UPDATE projects SET status = ?, updatedAt = ? WHERE id = ?');
+        stmt.run(status, new Date().toISOString(), id);
+    }
+
     private mapRowToProject(row: any): Project {
         return ProjectSchema.parse({
             ...row,

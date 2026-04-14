@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { projectRepository } from '@/src/server/repositories/ProjectRepository';
 import { projectSceneRepository } from '@/src/server/repositories/ProjectSceneRepository';
-import { renderJobRepository } from '@/src/server/repositories/RenderJobRepository';
+import { jobRepository } from '@/src/server/repositories/JobRepository';
 import { renderHistoryRepository } from '@/src/server/repositories/RenderHistoryRepository';
 import { ProjectQualityGateService } from '@/src/domains/operations/ProjectQualityGateService';
 import { v4 as uuidv4 } from 'uuid';
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
         // 5. Create Job
         const jobId = uuidv4();
-        await renderJobRepository.save({
+        await jobRepository.save({
             id: jobId,
             projectId: id,
             type: 'render',

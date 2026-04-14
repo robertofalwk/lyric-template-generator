@@ -46,12 +46,12 @@ def align_lyrics(
         result = model.align(process_audio, lyrics_text, language=language)
         
         # Structure the Timeline
-        from datetime import datetime
+        from datetime import datetime, timezone
         timeline = {
             "meta": {
                 "version": "v2.0",
                 "engine": "stable-ts",
-                "generatedAt": datetime.now().isoformat()
+                "generatedAt": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             },
             "segments": []
         }
