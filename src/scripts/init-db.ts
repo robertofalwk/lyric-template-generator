@@ -96,5 +96,13 @@ db.exec(`
   )
 `);
 
+// System Settings (V7 Ops)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )
+`);
+
 console.log('✔ Studio Node Initialized at:', DB_PATH);
 db.close();

@@ -23,8 +23,49 @@ export default function Dashboard() {
     const [statusMsg, setStatusMsg] = useState('');
     const [activeTemplate, setActiveTemplate] = useState<Template | null>(null);
     const [health, setHealth] = useState<any>(null);
+    const [appSettings, setAppSettings] = useState<Record<string, string>>({});
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
+    const [testResult, setTestResult] = useState<{success?: boolean; error?: string} | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/settings');
+            setAppSettings(await res.json());
+        } catch (e) {}
+    };
+
+    const saveSettings = async (newSettings: Record<string, string>) => {
+        setIsSavingSettings(true);
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newSettings)
+            });
+            if (res.ok) {
+                await fetchSettings();
+                await fetchHealth();
+                alert('Settings saved successfully');
+            }
+        } catch (e) {
+            alert('Failed to save settings');
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
+
+    const testAI = async () => {
+        setTestResult(null);
+        try {
+            const res = await fetch('/api/settings/test-ai', { method: 'POST' });
+            const data = await res.json();
+            setTestResult(data);
+        } catch (error: any) {
+            setTestResult({ success: false, error: error.message });
+        }
+    };
 
     const fetchHealth = async () => {
         try {
@@ -45,6 +86,7 @@ export default function Dashboard() {
     useEffect(() => {
         fetchHealth();
         fetchProjects();
+        fetchSettings();
     }, []);
 
     const loadProject = async (id: string) => {
@@ -89,6 +131,28 @@ export default function Dashboard() {
             fetchProjects();
             fileInputRef.current?.click();
         } catch (error: any) { alert(`Studio Error: ${error.message}`); } finally { setIsProcessing(false); }
+    };
+
+    const requestAlignment = async (id: string) => {
+        setIsProcessing(true);
+        setStatusMsg('Requesting External Signal Alignment...');
+        try {
+            const res = await fetch(`/api/projects/${id}/align`, { method: 'POST' });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Alignment rejected');
+            }
+            const job = await res.json();
+            setActiveJob(job);
+            
+            // Sync project state
+            const syncRes = await fetch(`/api/projects/${id}`);
+            setProject(await syncRes.json());
+        } catch (error: any) {
+            alert(`Alignment Error: ${error.message}`);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,22 +387,28 @@ export default function Dashboard() {
                                             {project?.status === 'failed' || project?.alignmentStatus === 'failed' ? (
                                                 <>
                                                     <p className="text-[12px] font-black uppercase tracking-[0.4em] text-rose-500">Signal Processing Error</p>
-                                                    <p className="text-[10px] text-zinc-500 font-bold leading-relaxed">{project.errorMessage || 'Verify Python/FFmpeg installation and alignment logs.'}</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold leading-relaxed">{project.errorMessage || 'Verify FFmpeg, Python Aligner, or OpenAI connectivity.'}</p>
                                                 </>
                                             ) : (project?.status === 'processing' || project?.alignmentStatus === 'processing') ? (
                                                 <>
                                                     <p className="text-[12px] font-black uppercase tracking-[0.4em] text-purple-400 animate-pulse">Studio Aligner Working</p>
-                                                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Synchronizing Narrative with Signal...</p>
+                                                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Converting Audio to Narrative Timeline...</p>
                                                 </>
                                             ) : (project?.status === 'ready' && !activeTemplate) ? (
                                                 <>
-                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-purple-400">Audio Processed</p>
-                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Select a visualization template from the library</p>
+                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-purple-400">Alignment Successful</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Audio processed. Select a style template to unlock the preview.</p>
+                                                </>
+                                            ) : (project?.audioOriginalPath) ? (
+                                                <>
+                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-emerald-500">Audio Ingested</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Ready to initiate Studio Alignment</p>
+                                                    <button onClick={() => requestAlignment(project.id)} className="mt-4 px-8 py-3 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl hover:bg-purple-500 transition-all">Start Aligner</button>
                                                 </>
                                             ) : (
                                                 <>
                                                     <p className="text-[12px] font-black uppercase tracking-[0.4em] text-zinc-700">Awaiting Signal Ingestion</p>
-                                                    <p className="text-[10px] text-zinc-800 font-bold uppercase tracking-widest">Upload audio to begin synchronization</p>
+                                                    <p className="text-[10px] text-zinc-800 font-bold uppercase tracking-widest">Upload audio file to begin production</p>
                                                 </>
                                             )}
                                             
@@ -365,21 +435,74 @@ export default function Dashboard() {
                                      </section>
 
                                      <section className="flex flex-col gap-8">
-                                         <label className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-600">Intelligence Configuration</label>
-                                         <div className="p-10 rounded-[2.5rem] bg-zinc-900 border border-white/5 space-y-8">
-                                             <div className="flex flex-col gap-3">
-                                                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Provider</span>
-                                                 <div className="flex gap-4">
-                                                     <button className="px-8 py-3 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl">OpenAI Cloud</button>
-                                                     <button className="px-8 py-3 bg-zinc-800 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded-xl">Local Neural</button>
-                                                 </div>
-                                             </div>
-                                             <div className="flex flex-col gap-3">
-                                                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Model</span>
-                                                 <input className="bg-black/40 border border-white/5 rounded-xl px-5 py-3 text-sm text-zinc-300 w-full font-medium" value={health?.details?.openaiModel} readOnly />
-                                             </div>
-                                         </div>
-                                     </section>
+                                          <div className="flex items-center justify-between">
+                                              <label className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-600">Intelligence Configuration</label>
+                                              <button 
+                                                 onClick={() => saveSettings(appSettings)}
+                                                 disabled={isSavingSettings}
+                                                 className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-xl shadow-purple-500/20"
+                                              >
+                                                  {isSavingSettings ? 'Saving...' : 'Deploy Engine Node'}
+                                              </button>
+                                          </div>
+                                          
+                                          <div className="p-10 rounded-[2.5rem] bg-zinc-900 border border-white/5 space-y-8">
+                                              <div className="flex flex-col gap-3">
+                                                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Provider</span>
+                                                  <div className="flex gap-4">
+                                                      <button 
+                                                         onClick={() => setAppSettings({...appSettings, ai_provider: 'openai'})}
+                                                         className={`px-8 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${appSettings.ai_provider === 'openai' ? 'bg-white text-black shadow-2xl' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}
+                                                      >
+                                                          OpenAI Cloud
+                                                      </button>
+                                                      <button 
+                                                         onClick={() => setAppSettings({...appSettings, ai_provider: 'local'})}
+                                                         className={`px-8 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${appSettings.ai_provider === 'local' ? 'bg-white text-black shadow-2xl' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}
+                                                      >
+                                                          Local Heuristic
+                                                      </button>
+                                                  </div>
+                                              </div>
+
+                                              {appSettings.ai_provider === 'openai' && (
+                                                  <div className="flex flex-col gap-8 animate-in slide-in-from-top duration-300">
+                                                      <div className="flex flex-col gap-3">
+                                                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">OpenAI API Key</span>
+                                                          <input 
+                                                              type="password"
+                                                              className="bg-black/40 border border-white/5 rounded-xl px-5 py-3 text-sm text-zinc-300 w-full font-medium focus:ring-1 focus:ring-purple-500/50 outline-none" 
+                                                              value={appSettings.openai_api_key || ''} 
+                                                              onChange={e => setAppSettings({...appSettings, openai_api_key: e.target.value})}
+                                                              placeholder="sk-..."
+                                                          />
+                                                      </div>
+                                                      <div className="flex flex-col gap-3">
+                                                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Intelligence Model</span>
+                                                          <input 
+                                                              className="bg-black/40 border border-white/5 rounded-xl px-5 py-3 text-sm text-zinc-300 w-full font-medium focus:ring-1 focus:ring-purple-500/50 outline-none" 
+                                                              value={appSettings.openai_model || 'gpt-4o-mini'} 
+                                                              onChange={e => setAppSettings({...appSettings, openai_model: e.target.value})}
+                                                          />
+                                                      </div>
+                                                  </div>
+                                              )}
+
+                                              <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                                                  <button 
+                                                      onClick={testAI}
+                                                      className="px-6 py-2 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all"
+                                                  >
+                                                      Test Studio AI Connection
+                                                  </button>
+                                                  {testResult && (
+                                                      <span className={`text-[9px] font-black uppercase tracking-widest ${testResult.success ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                          {testResult.success ? 'Studio Integrity: Verified' : `Failure: ${testResult.error}`}
+                                                      </span>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      </section>
                                  </div>
                              </div>
                         )}

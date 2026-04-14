@@ -150,6 +150,11 @@ db.exec(`
         errorMessage TEXT,
         FOREIGN KEY(projectId) REFERENCES projects(id)
     );
+
+    CREATE TABLE IF NOT EXISTS system_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
 `);
 
 // Migration scripts for V6

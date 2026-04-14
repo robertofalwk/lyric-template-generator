@@ -2,6 +2,7 @@ import db from '../database/db';
 import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
+import { settingsRepository } from '../repositories/SettingsRepository';
 
 export interface SystemHealth {
     status: 'ok' | 'degraded' | 'critical';
@@ -23,11 +24,17 @@ export interface SystemHealth {
 
 export class SystemHealthService {
     static async check(): Promise<SystemHealth> {
+        const dbType = settingsRepository.get('ai_provider');
+        const dbKey = settingsRepository.get('openai_api_key');
+        
+        const hasOpenAI = (dbType === 'openai' && !!dbKey) || (process.env.TEMPLATE_AI_PROVIDER === 'openai' && !!process.env.OPENAI_API_KEY);
+
         const checks = {
             database: false,
             ffmpeg: false,
             python: false,
-            openai: !!process.env.OPENAI_API_KEY,
+            aligner: false,
+            openai: hasOpenAI,
             storage: false
         };
 
@@ -70,7 +77,7 @@ export class SystemHealthService {
             checks,
             details: {
                 dbPath: path.join(process.cwd(), 'storage', 'database.sqlite'),
-                openaiModel: process.env.OPENAI_MODEL || 'gpt-4o'
+                openaiModel: settingsRepository.get('openai_model') || process.env.OPENAI_MODEL || 'gpt-4o'
             }
         };
     }

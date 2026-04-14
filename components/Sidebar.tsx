@@ -216,7 +216,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="h-16 border-b border-white/5 bg-black/40 px-6 flex items-center justify-between overflow-x-auto custom-scrollbar scrollbar-hide shrink-0">
                 <div className="flex gap-2">
                     {['monitor', 'director', 'assets', 'library', 'review', 'publish'].map(t => {
-                        const isLocked = !currentProject?.timeline && ['director', 'library', 'review', 'publish'].includes(t);
+                        const hasProject = !!currentProject;
+                        const hasTimeline = !!currentProject?.timeline;
+                        
+                        let isLocked = false;
+                        if (!hasProject && t !== 'monitor') isLocked = true;
+                        if (hasProject && !hasTimeline && ['review', 'publish'].includes(t)) isLocked = true;
+
                         return (
                             <button 
                                 key={t}
@@ -227,7 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     tab === t ? 'bg-zinc-800 border-white/10 text-white shadow-lg' : 
                                     'bg-transparent border-transparent text-zinc-600 hover:text-zinc-400'
                                 }`}
-                                title={isLocked ? 'Ingestion required to unlock this module' : ''}
+                                title={isLocked ? 'Ingestion or active project required' : ''}
                             >
                                 {t}
                             </button>
