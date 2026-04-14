@@ -166,14 +166,53 @@ export const ProjectSchema = z.object({
     title: z.string().min(1),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
-    selectedTemplateId: z.string().optional(),
-    selectedBackgroundAssetId: z.string().optional(),
-    selectedPackId: z.string().optional(),
-    lastVisualScore: z.number().optional(),
+    
+    // Asset Paths
+    audioOriginalPath: z.string().optional().nullable(),
+    audioProcessedPath: z.string().optional().nullable(),
+    latestTimelinePath: z.string().optional().nullable(),
+    
+    // Lyrics & Alignment
+    lyricsRaw: z.string().optional().nullable(),
+    lyricsNormalized: z.string().optional().nullable(),
+    alignmentStatus: z.enum(['none', 'processing', 'completed', 'failed']).default('none'),
+    
+    // Art Direction & Visuals
+    selectedTemplateId: z.string().optional().nullable(),
+    selectedBackgroundAssetId: z.string().optional().nullable(),
+    selectedPackId: z.string().optional().nullable(),
+    lastVisualScore: z.number().optional().nullable(),
     aspectRatio: z.enum(['9:16', '16:9']),
-    status: z.enum(['draft', 'review', 'approved', 'rendering', 'completed', 'published']).default('draft'),
-    timeline: TimelineSchema.optional(),
+    
+    // Status & Operations
+    status: z.enum(['draft', 'processing', 'review', 'approved', 'rendering', 'completed', 'published']).default('draft'),
+    renderStatus: z.enum(['none', 'processing', 'completed', 'failed']).default('none'),
+    
+    // Configuration & Exports
+    exportFormats: z.array(z.string()).default([]),
+    settings: z.record(z.any()).default({}),
+    
+    // Data Structure
+    timeline: TimelineSchema.optional().nullable(),
     scenes: z.array(ProjectSceneSchema).default([]),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
+
+// --- Render & Alignment Jobs (V6 Ops) ---
+export const RenderJobSchema = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    type: z.enum(['alignment', 'render']),
+    status: z.enum(['queued', 'processing', 'completed', 'failed']),
+    progress: z.number().min(0).max(100).default(0),
+    createdAt: z.string().datetime(),
+    startedAt: z.string().datetime().optional().nullable(),
+    finishedAt: z.string().datetime().optional().nullable(),
+    outputPath: z.string().optional().nullable(),
+    logs: z.array(z.string()).default([]),
+    payload: z.record(z.any()).optional().nullable(),
+    errorMessage: z.string().optional().nullable(),
+});
+
+export type RenderJob = z.infer<typeof RenderJobSchema>;

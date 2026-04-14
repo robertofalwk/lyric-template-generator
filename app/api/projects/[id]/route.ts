@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { projectRepository } from '@/src/server/repositories/ProjectRepository';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const project = await projectRepository.findById(id);
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
         return NextResponse.json(project);
@@ -12,9 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const project = await projectRepository.findById(id);
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 

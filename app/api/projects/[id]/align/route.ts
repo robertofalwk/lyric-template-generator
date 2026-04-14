@@ -3,9 +3,9 @@ import { projectRepository } from '@/src/server/repositories/ProjectRepository';
 import { jobRepository } from '@/src/server/repositories/JobRepository';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const project = await projectRepository.findById(id);
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 

@@ -51,8 +51,8 @@ export class ProjectRepository {
     private mapRowToProject(row: any): Project {
         return ProjectSchema.parse({
             ...row,
-            exportFormats: JSON.parse(row.exportFormats),
-            settings: JSON.parse(row.settings),
+            exportFormats: row.exportFormats ? JSON.parse(row.exportFormats) : [],
+            settings: row.settings ? JSON.parse(row.settings) : {},
             timeline: row.timeline ? JSON.parse(row.timeline) : undefined
         });
     }

@@ -21,8 +21,12 @@ export async function POST(req: NextRequest) {
             updatedAt: new Date().toISOString(),
             aspectRatio,
             status: 'draft' as const,
+            alignmentStatus: 'none' as const,
+            renderStatus: 'none' as const,
+            lyricsRaw: lyrics || null,
+            exportFormats: [],
+            settings: {},
             scenes: [],
-            // Store lyrics in a project field or separate service if needed
         };
 
         await projectRepository.save(project as any);
@@ -31,4 +35,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
- Isra
+

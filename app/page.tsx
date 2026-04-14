@@ -111,8 +111,24 @@ export default function Dashboard() {
             
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar 
+                    currentProject={project || undefined}
                     onProjectCreate={handleCreateProject} 
-                    onTemplateSelect={setActiveTemplate}
+                    onProjectUpdate={(p) => { setProject(p); fetchProjects(); }}
+                    onTemplateSelect={async (t) => {
+                        setActiveTemplate(t);
+                        if (project) {
+                            try {
+                                const res = await fetch(`/api/projects/${project.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ selectedTemplateId: t.id })
+                                });
+                                const updated = await res.json();
+                                setProject(updated);
+                                fetchProjects();
+                            } catch (e) {}
+                        }
+                    }}
                     activeTemplateId={activeTemplate?.id}
                     currentTemplate={activeTemplate || undefined}
                 />

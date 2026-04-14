@@ -10,9 +10,9 @@ const probe = promisify(ffmpeg.ffprobe);
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_MIMES = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp3', 'audio/aac'];
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const project = await projectRepository.findById(id);
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 

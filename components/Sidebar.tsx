@@ -12,14 +12,18 @@ import {
 import { Project, ProjectScene, ProjectComment, Template, TemplateVariation, BackgroundAsset } from '@/src/schemas';
 
 interface SidebarProps {
+    currentProject?: Project;
     onProjectCreate: (title: string, lyrics: string) => void;
+    onProjectUpdate: (project: Project) => void;
     onTemplateSelect: (template: Template) => void;
     activeTemplateId?: string;
     currentTemplate?: Template;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
+    currentProject,
     onProjectCreate, 
+    onProjectUpdate,
     onTemplateSelect, 
     activeTemplateId,
     currentTemplate 
@@ -33,19 +37,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const [refinePrompt, setRefinePrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isRefining, setIsRefining] = useState(false);
-    const [variants, setVariants] = useState<TemplateVariation[]>([]);
     const [assets, setAssets] = useState<BackgroundAsset[]>([]);
     const [templates, setTemplates] = useState<Template[]>([]);
+    const [comments, setComments] = useState<ProjectComment[]>([]);
+    const [jobs, setJobs] = useState<any[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
     const [aiStatus, setAiStatus] = useState<'idle' | 'interpreting' | 'fallback'>('idle');
+
+    useEffect(() => {
+        if (currentProject) {
+            setTitle(currentProject.title);
+            setLyrics(currentProject.lyricsRaw || '');
+        }
+    }, [currentProject?.id]);
 
     useEffect(() => {
         if (tab === 'assets') fetchAssets();
         if (tab === 'library') fetchTemplates();
-    }, [tab]);
+        if (tab === 'review' && currentProject) fetchComments();
+        if (tab === 'publish' && currentProject) fetchJobs();
+    }, [tab, currentProject?.id]);
 
     const fetchAssets = async () => {
         try {
-            const res = await fetch('/api/assets');
+            const res = await fetch('/api/backgrounds');
             setAssets(await res.json());
         } catch (e) {}
     };
@@ -54,6 +69,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         try {
             const res = await fetch('/api/templates');
             setTemplates(await res.json());
+        } catch (e) {}
+    };
+
+    const fetchComments = async () => {
+        if (!currentProject) return;
+        try {
+            const res = await fetch(`/api/projects/${currentProject.id}/comments`);
+            setComments(await res.json());
+        } catch (e) {}
+    };
+
+    const fetchJobs = async () => {
+        if (!currentProject) return;
+        try {
+            const res = await fetch(`/api/projects/${currentProject.id}/jobs`);
+            setJobs(await res.json());
         } catch (e) {}
     };
 
@@ -68,8 +99,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 body: JSON.stringify({ prompt: aiPrompt })
             });
             const data = await res.json();
-            setVariants(data);
+            // In a real flow, we might want to store these variations or just show them
+            // For now, let's just use the first one if we want automated flow, but here we show them.
             setAiStatus(res.headers.get('X-TemplateAI-Fallback') ? 'fallback' : 'idle');
+            // We'll set a local state for variations to display
+            (window as any).__LAST_VARIANTS__ = data;
         } catch (error) { setAiStatus('fallback'); } finally { setIsGenerating(false); }
     };
 
@@ -88,6 +122,92 @@ export const Sidebar: React.FC<SidebarProps> = ({
             setRefinePrompt('');
             setAiStatus(res.headers.get('X-TemplateAI-Fallback') ? 'fallback' : 'idle');
         } catch (error) { setAiStatus('fallback'); } finally { setIsRefining(false); }
+    };
+
+    const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            await fetch('/api/backgrounds/upload', { method: 'POST', body: formData });
+            fetchAssets();
+        } catch (e) {
+            console.error('Upload failed', e);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleAssetDelete = async (id: string) => {
+        if (!confirm('Delete this asset?')) return;
+        try {
+            await fetch(`/api/backgrounds/${id}`, { method: 'DELETE' });
+            fetchAssets();
+        } catch (e) {}
+    };
+
+    const handleAssetSelect = async (asset: BackgroundAsset) => {
+        if (!currentProject) return;
+        try {
+            const res = await fetch(`/api/projects/${currentProject.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selectedBackgroundAssetId: asset.id })
+            });
+            onProjectUpdate(await res.json());
+        } catch (e) {}
+    };
+
+    const handleTemplateFavorite = async (id: string, current: boolean) => {
+        try {
+            await fetch(`/api/templates/${id}/favorite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isFavorite: !current })
+            });
+            fetchTemplates();
+        } catch (e) {}
+    };
+
+    const handleTemplateDuplicate = async (id: string) => {
+        try {
+            await fetch(`/api/templates/${id}/duplicate`, { method: 'POST' });
+            fetchTemplates();
+        } catch (e) {}
+    };
+
+    const handleTemplateDelete = async (id: string) => {
+        if (!confirm('Delete this template?')) return;
+        try {
+            await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+            fetchTemplates();
+        } catch (e) {}
+    };
+
+    const handleApproveProject = async () => {
+        if (!currentProject) return;
+        try {
+            const res = await fetch(`/api/projects/${currentProject.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'approved' })
+            });
+            onProjectUpdate(await res.json());
+        } catch (e) {}
+    };
+
+    const handleProjectUpdateCommand = async () => {
+        if (!currentProject) return;
+        try {
+            const res = await fetch(`/api/projects/${currentProject.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, lyricsRaw: lyrics })
+            });
+            onProjectUpdate(await res.json());
+        } catch (e) {}
     };
 
     return (
@@ -128,12 +248,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onChange={e => setLyrics(e.target.value)}
                             />
                         </section>
-                        <button 
-                            onClick={() => onProjectCreate(title, lyrics)}
-                            className="w-full py-5 bg-white text-black font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl shadow-2xl hover:bg-zinc-200 active:scale-[0.98] transition-all"
-                        >
-                            Deploy Engine Node
-                        </button>
+                        {currentProject ? (
+                            <button 
+                                onClick={handleProjectUpdateCommand}
+                                className="w-full py-5 bg-purple-600 text-white font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl shadow-2xl hover:bg-purple-500 active:scale-[0.98] transition-all"
+                            >
+                                Update Project State
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={() => onProjectCreate(title, lyrics)}
+                                className="w-full py-5 bg-white text-black font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl shadow-2xl hover:bg-zinc-200 active:scale-[0.98] transition-all"
+                            >
+                                Deploy Engine Node
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -180,42 +309,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </section>
                         )}
                         
-                        {variants.length > 0 && (
-                            <div className="space-y-6">
-                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Art Projections</label>
-                                {variants.map((v, i) => (
-                                    <div key={i} className="p-6 bg-zinc-900 border border-white/5 rounded-3xl flex flex-col gap-4 group hover:border-purple-500/30 transition-all">
-                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                            <span className="text-zinc-400 flex items-center gap-2"><Layers size={14}/> {v.type}</span>
-                                            <span className={v.score > 80 ? 'text-emerald-500 font-bold' : 'text-yellow-500 font-bold'}>{v.score}% Score</span>
-                                        </div>
-                                        <button 
-                                            onClick={() => onTemplateSelect(v.template)}
-                                            className="w-full py-4 bg-white text-black text-[9px] font-black uppercase tracking-[0.4em] rounded-xl hover:bg-zinc-200 transition-all shadow-xl shadow-black/20"
-                                        >
-                                            Lock Strategy
-                                        </button>
-                                    </div>
-                                ))}
+                        {(window as any).__LAST_VARIANTS__?.map((v: any, i: number) => (
+                            <div key={i} className="p-6 bg-zinc-900 border border-white/5 rounded-3xl flex flex-col gap-4 group hover:border-purple-500/30 transition-all">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-zinc-400 flex items-center gap-2"><Layers size={14}/> {v.type}</span>
+                                    <span className={v.score > 80 ? 'text-emerald-500 font-bold' : 'text-yellow-500 font-bold'}>{v.score}% Score</span>
+                                </div>
+                                <button 
+                                    onClick={() => onTemplateSelect(v.template)}
+                                    className="w-full py-4 bg-white text-black text-[9px] font-black uppercase tracking-[0.4em] rounded-xl hover:bg-zinc-200 transition-all shadow-xl shadow-black/20"
+                                >
+                                    Lock Strategy
+                                </button>
                             </div>
-                        )}
+                        ))}
                     </div>
                 )}
 
                 {tab === 'assets' && (
                     <div className="flex flex-col gap-10 animate-in fade-in duration-500">
-                        <section className="p-8 rounded-[2rem] bg-zinc-900 border border-white/5 border-dashed flex flex-col items-center justify-center gap-4 text-center">
-                            <ImageIcon size={32} className="text-zinc-800" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Drop Visual Assets Here</p>
-                        </section>
+                        <label className="p-8 rounded-[2rem] bg-zinc-900 border border-white/5 border-dashed flex flex-col items-center justify-center gap-4 text-center cursor-pointer hover:bg-zinc-800 transition-all">
+                            <input type="file" className="hidden" onChange={handleAssetUpload} accept="image/*,video/*" />
+                            {isUploading ? <Loader2 size={32} className="animate-spin text-purple-500" /> : <ImageIcon size={32} className="text-zinc-800" />}
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                                {isUploading ? 'Uploading Art...' : 'Drop Visual Assets Here'}
+                            </p>
+                        </label>
                         
                         <div className="grid grid-cols-2 gap-4">
                             {assets.map(a => (
-                                <div key={a.id} className="group aspect-video rounded-2xl bg-zinc-900 border border-white/5 overflow-hidden relative cursor-pointer">
+                                <div 
+                                    key={a.id} 
+                                    onClick={() => handleAssetSelect(a)}
+                                    className={`group aspect-video rounded-2xl bg-zinc-900 border overflow-hidden relative cursor-pointer transition-all ${currentProject?.selectedBackgroundAssetId === a.id ? 'border-purple-500 shadow-xl shadow-purple-500/20' : 'border-white/5 hover:border-white/20'}`}
+                                >
                                     <img src={a.publicPath} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4 justify-between">
                                         <span className="text-[8px] font-black uppercase tracking-widest text-white truncate">{a.name}</span>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleAssetDelete(a.id); }}
+                                            className="p-1 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Trash2 size={12}/>
+                                        </button>
                                     </div>
+                                    {currentProject?.selectedBackgroundAssetId === a.id && (
+                                        <div className="absolute top-2 right-2 bg-purple-500 text-white rounded-full p-1 shadow-lg">
+                                            <Check size={8}/>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -226,14 +368,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex flex-col gap-10 animate-in fade-in duration-500">
                         <div className="space-y-4">
                             {templates.map(t => (
-                                <div key={t.id} className="p-5 rounded-2xl bg-zinc-900 border border-white/5 hover:border-white/20 transition-all flex items-center justify-between group">
+                                <div key={t.id} className={`p-5 rounded-2xl bg-zinc-900 border transition-all flex items-center justify-between group ${activeTemplateId === t.id ? 'border-purple-500 shadow-xl shadow-purple-500/20' : 'border-white/5 hover:border-white/20'}`}>
                                     <div className="flex flex-col">
                                         <span className="text-[11px] font-bold text-zinc-300">{t.name}</span>
-                                        <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{t.fontFamily} • {t.metadata?.sourceType}</span>
+                                        <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{t.fontFamily} • {t.metadata?.sourceType} • v{t.metadata?.version || 1}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button className="p-2 border border-white/5 rounded-lg text-zinc-700 hover:text-white transition-all"><Heart size={12}/></button>
-                                        <button onClick={() => onTemplateSelect(t)} className="p-2 bg-white text-black rounded-lg"><Check size={12}/></button>
+                                        <button 
+                                            onClick={() => handleTemplateFavorite(t.id, t.metadata?.isFavorite || false)}
+                                            className={`p-2 border border-white/5 rounded-lg transition-all ${t.metadata?.isFavorite ? 'text-rose-500 bg-rose-500/10' : 'text-zinc-700 hover:text-white'}`}
+                                        >
+                                            <Heart size={12} fill={t.metadata?.isFavorite ? 'currentColor' : 'none'}/>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleTemplateDuplicate(t.id)}
+                                            className="p-2 border border-white/5 rounded-lg text-zinc-700 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Copy size={12}/>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleTemplateDelete(t.id)}
+                                            className="p-2 border border-white/5 rounded-lg text-zinc-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Trash2 size={12}/>
+                                        </button>
+                                        <button onClick={() => onTemplateSelect(t)} className={`p-2 rounded-lg transition-all ${activeTemplateId === t.id ? 'bg-purple-500 text-white' : 'bg-white text-black hover:bg-zinc-200'}`}>
+                                            {activeTemplateId === t.id ? <Check size={12}/> : <Send size={12}/>}
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -245,13 +406,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex flex-col gap-10 animate-in fade-in duration-500">
                          <section className="flex flex-col gap-6">
                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 flex items-center gap-2">
-                                <ListChecks size={14}/> Quality Gates
+                                <ListChecks size={14}/> Studio Quality Gates
                             </label>
                             <div className="space-y-3">
                                 {[
-                                    { label: 'Minimum Scene Score (60%)', ok: (currentTemplate?.metadata?.qualityScore || 0) >= 60 },
-                                    { label: 'Safe-Zone Alignment', ok: true },
-                                    { label: 'Timeline Consistency', ok: true },
+                                    { label: 'Technical Health Score (>70%)', ok: (currentTemplate?.metadata?.qualityScore || 0) >= 70 },
+                                    { label: 'Lineage Integrity', ok: !!currentTemplate?.metadata?.providerUsed },
+                                    { label: 'Project Persistence', ok: !!currentProject?.id },
+                                    { label: 'Visual Contract Verification', ok: !!currentTemplate?.fontFamily },
                                 ].map(l => (
                                     <div key={l.label} className="p-4 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-between">
                                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{l.label}</span>
@@ -260,8 +422,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 ))}
                             </div>
                          </section>
-                         <button className="w-full py-5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl hover:bg-emerald-500/20 transition-all shadow-xl shadow-emerald-500/5">
-                            Approve Strategy
+
+                         <section className="flex flex-col gap-6">
+                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Studio Feedback</label>
+                             <div className="space-y-4">
+                                 {comments.length === 0 && <p className="text-[9px] text-zinc-800 uppercase tracking-widest font-black text-center py-4">No production notes yet</p>}
+                                 {comments.map(c => (
+                                     <div key={c.id} className="p-4 rounded-2xl bg-zinc-900/40 border border-white/5">
+                                         <p className="text-xs text-zinc-400 mb-2">{c.message}</p>
+                                         <div className="flex justify-between items-center text-[7px] font-black uppercase tracking-widest text-zinc-700">
+                                            <span>{c.type} • {c.status}</span>
+                                            <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                                         </div>
+                                     </div>
+                                 ))}
+                             </div>
+                         </section>
+
+                         <button 
+                            disabled={currentProject?.status === 'approved'}
+                            onClick={handleApproveProject}
+                            className={`w-full py-5 font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl transition-all shadow-xl ${currentProject?.status === 'approved' ? 'bg-emerald-500 text-white cursor-default' : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20'}`}
+                         >
+                            {currentProject?.status === 'approved' ? 'Strategy Approved' : 'Approve Strategy'}
                          </button>
                     </div>
                 )}
@@ -269,18 +452,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {tab === 'publish' && (
                     <div className="flex flex-col gap-10 animate-in fade-in duration-500">
                         <section className="flex flex-col gap-6">
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Studio Exports</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Live Studio Exports</label>
                             <div className="grid grid-cols-1 gap-4">
-                                {[
-                                    { ver: 'V2 Master Alpha', date: '2026-04-13', status: 'ready' },
-                                    { ver: 'V1 Draft Stage', date: '2026-04-12', status: 'ready' }
-                                ].map(r => (
-                                    <div key={r.ver} className="p-6 rounded-3xl bg-zinc-900 border border-white/5 flex items-center justify-between group hover:border-emerald-500/20 transition-all">
+                                {jobs.length === 0 && <p className="text-[9px] text-zinc-800 uppercase tracking-widest font-black text-center py-10">No renders detected</p>}
+                                {jobs.map(j => (
+                                    <div key={j.id} className="p-6 rounded-3xl bg-zinc-900 border border-white/5 flex items-center justify-between group hover:border-emerald-500/20 transition-all">
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-bold text-zinc-300">{r.ver}</span>
-                                            <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{r.date}</span>
+                                            <span className="text-[11px] font-bold text-zinc-300 capitalize">{j.type} Render</span>
+                                            <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{new Date(j.createdAt).toLocaleString()} • {j.status}</span>
                                         </div>
-                                        <button className="p-3 bg-zinc-950 text-zinc-500 group-hover:text-emerald-500 transition-all"><Download size={18}/></button>
+                                        {j.status === 'completed' ? (
+                                            <a href={j.outputPath} download className="p-3 bg-zinc-950 text-zinc-500 group-hover:text-emerald-500 transition-all"><Download size={18}/></a>
+                                        ) : (
+                                            <div className="p-3 text-zinc-700 animate-pulse"><Film size={18}/></div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -299,7 +484,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                         <div className="flex flex-col">
                             <p className="text-[11px] font-black text-zinc-200 tracking-[0.1em] uppercase">Lyric Lab V7</p>
-                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{currentTemplate?.name || 'Awaiting Signal Ingestion...'}</p>
+                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{currentProject?.title || 'Awaiting Signal Ingestion...'}</p>
                         </div>
                     </div>
                     {currentTemplate?.metadata?.qualityScore && (

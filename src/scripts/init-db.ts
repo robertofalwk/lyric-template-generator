@@ -16,11 +16,21 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    data TEXT NOT NULL,
-    sourceType TEXT DEFAULT 'manual',
-    isFavorite INTEGER DEFAULT 0,
+    createdAt TEXT,
+    updatedAt TEXT,
+    audioOriginalPath TEXT,
+    audioProcessedPath TEXT,
+    lyricsRaw TEXT,
+    lyricsNormalized TEXT,
+    selectedTemplateId TEXT,
+    aspectRatio TEXT,
     status TEXT DEFAULT 'draft',
-    createdAt TEXT
+    alignmentStatus TEXT DEFAULT 'none',
+    renderStatus TEXT DEFAULT 'none',
+    exportFormats TEXT,
+    settings TEXT,
+    latestTimelinePath TEXT,
+    timeline TEXT
   )
 `);
 
@@ -52,7 +62,7 @@ db.exec(`
   )
 `);
 
-// Jobs
+// Jobs (Reconciled with JobRepository)
 db.exec(`
   CREATE TABLE IF NOT EXISTS render_jobs (
     id TEXT PRIMARY KEY,
@@ -60,9 +70,28 @@ db.exec(`
     type TEXT NOT NULL,
     status TEXT NOT NULL,
     progress INTEGER DEFAULT 0,
-    payload TEXT,
+    createdAt TEXT,
+    startedAt TEXT,
+    finishedAt TEXT,
     outputPath TEXT,
-    createdAt TEXT
+    logs TEXT,
+    payload TEXT,
+    errorMessage TEXT
+  )
+`);
+
+// Comments (V6 Review)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS project_comments (
+    id TEXT PRIMARY KEY,
+    projectId TEXT NOT NULL,
+    sceneId TEXT,
+    timestampMs INTEGER,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'note',
+    status TEXT DEFAULT 'open',
+    createdAt TEXT,
+    resolvedAt TEXT
   )
 `);
 
