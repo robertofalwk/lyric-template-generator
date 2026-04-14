@@ -6,9 +6,12 @@ import { renderHistoryRepository } from '@/src/server/repositories/RenderHistory
 import { ProjectQualityGateService } from '@/src/domains/operations/ProjectQualityGateService';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const { id } = params;
+        const { id } = await context.params;
         const { formats, presetId, customTemplate } = await req.json();
 
         // 1. Fetch State
@@ -51,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             type: 'render',
             status: 'queued',
             progress: 0,
+            logs: [],
             payload: { presetId, historyId, formats, customTemplate },
             createdAt: new Date().toISOString()
         });

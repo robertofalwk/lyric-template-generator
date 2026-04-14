@@ -3,21 +3,29 @@ import { projectSceneRepository } from '@/src/server/repositories/ProjectSceneRe
 import { SceneDetectionService } from '@/src/domains/templates/SceneDetectionService';
 import { projectRepository } from '@/src/server/repositories/ProjectRepository';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const scenes = await projectSceneRepository.findByProjectId(params.id);
+        const { id } = await context.params;
+        const scenes = await projectSceneRepository.findByProjectId(id);
         return NextResponse.json(scenes);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const project = await projectRepository.findById(params.id);
+        const { id } = await context.params;
+        const project = await projectRepository.findById(id);
         if (!project || !project.timeline) throw new Error('Project or timeline not found');
 
-        const detected = SceneDetectionService.detect(params.id, project.timeline);
+        const detected = SceneDetectionService.detect(id, project.timeline);
         for (const s of detected) {
             await projectSceneRepository.save(s);
         }

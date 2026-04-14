@@ -11,9 +11,12 @@ const MIME_MAP: Record<string, string> = {
     '.m4a': 'audio/mp4',
 };
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const { id } = params;
+        const { id } = await context.params;
         const project = await projectRepository.findById(id);
         
         if (!project || !project.audioOriginalPath) {
