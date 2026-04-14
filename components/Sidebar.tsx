@@ -68,7 +68,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const fetchTemplates = async () => {
         try {
             const res = await fetch('/api/templates');
-            setTemplates(await res.json());
+            const data = await res.json();
+            setTemplates(Array.isArray(data) ? data : []);
         } catch (e) {}
     };
 
@@ -181,7 +182,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const handleTemplateDelete = async (id: string) => {
         if (!confirm('Delete this template?')) return;
         try {
-            await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+            if (!res.ok) return;
             fetchTemplates();
         } catch (e) {}
     };
@@ -407,7 +409,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         </button>
                                         <button 
                                             onClick={() => handleTemplateDelete(t.id)}
-                                            className="p-2 border border-white/5 rounded-lg text-zinc-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                            disabled={t.metadata?.sourceType === 'stock'}
+                                            className={`p-2 border border-white/5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
+                                                t.metadata?.sourceType === 'stock'
+                                                    ? 'text-zinc-800 cursor-not-allowed'
+                                                    : 'text-zinc-700 hover:text-red-500'
+                                            }`}
                                         >
                                             <Trash2 size={12}/>
                                         </button>
