@@ -6,6 +6,7 @@ build
 coverage
 
 # Python
+src/server/venv/
 worker/venv
 __pycache__
 *.pyc
@@ -23,3 +24,6 @@ public/exports/
 
 # Remotion
 remotion/bundle
+
+# TS
+*.tsbuildinfo
