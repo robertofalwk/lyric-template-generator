@@ -55,11 +55,13 @@ export class SystemHealthService {
             execSync('python --version');
             checks.python = true;
             
-            // Check for Aligner dependency
+            // Check for Aligner dependency - Attempt real import to verify environment
             try {
-                execSync('pip show stable-ts');
+                execSync('python -c "import stable_whisper; print(\'ok\')"');
                 checks.aligner = true;
-            } catch (e) {}
+            } catch (e) {
+                console.warn('[HEALTH_CHECK] stable_whisper import failed via python');
+            }
         } catch (e) {}
 
         // 4. Storage Check

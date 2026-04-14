@@ -217,11 +217,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex gap-2">
                     {['monitor', 'director', 'assets', 'library', 'review', 'publish'].map(t => {
                         const hasProject = !!currentProject;
+                        const hasAudio = !!currentProject?.audioOriginalPath;
                         const hasTimeline = !!currentProject?.timeline;
                         
                         let isLocked = false;
                         if (!hasProject && t !== 'monitor') isLocked = true;
-                        if (hasProject && !hasTimeline && ['review', 'publish'].includes(t)) isLocked = true;
+                        if (hasProject) {
+                            if (t === 'director' && !hasAudio) isLocked = true;
+                            if (['review', 'publish'].includes(t) && !hasTimeline) isLocked = true;
+                        }
 
                         return (
                             <button 
@@ -233,7 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     tab === t ? 'bg-zinc-800 border-white/10 text-white shadow-lg' : 
                                     'bg-transparent border-transparent text-zinc-600 hover:text-zinc-400'
                                 }`}
-                                title={isLocked ? 'Ingestion or active project required' : ''}
+                                title={isLocked ? 'Signal requirements not met' : ''}
                             >
                                 {t}
                             </button>

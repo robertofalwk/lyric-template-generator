@@ -21,7 +21,7 @@ export class AlignmentService {
             '--audio', audioPath,
             '--lyrics', lyricsPath,
             '--output', outputPath,
-            '--language', settings.language,
+            '--language', settings.language || 'en',
         ];
 
         if (settings.useVocalIsolation) args.push('--isolate');

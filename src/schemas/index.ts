@@ -160,6 +160,15 @@ export type ProjectScene = z.infer<typeof ProjectSceneSchema>;
 export type ProjectComment = z.infer<typeof ProjectCommentSchema>;
 export type TemplateVariation = z.infer<typeof TemplateVariationSchema>;
 
+export const ProjectSettingsSchema = z.object({
+    language: z.string().default('en'),
+    useVocalIsolation: z.boolean().default(true),
+    wordLevelTiming: z.boolean().default(true),
+    aiProvider: z.enum(['local', 'openai']).default('local'),
+});
+
+export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
+
 // --- Project ---
 export const ProjectSchema = z.object({
     id: z.string().uuid(),
@@ -190,7 +199,7 @@ export const ProjectSchema = z.object({
     
     // Configuration & Exports
     exportFormats: z.array(z.string()).default([]),
-    settings: z.record(z.any()).default({}),
+    settings: ProjectSettingsSchema.default({}),
     
     // Data Structure
     timeline: TimelineSchema.optional().nullable(),

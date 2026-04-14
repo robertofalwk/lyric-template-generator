@@ -12,10 +12,10 @@ export class OpenAIProvider implements TemplateAIProvider {
     private model: string;
     private timeoutMs: number;
 
-    constructor() {
-        this.apiKey = process.env.OPENAI_API_KEY || '';
-        this.model = process.env.OPENAI_MODEL || 'gpt-4o';
-        this.timeoutMs = parseInt(process.env.TEMPLATE_AI_TIMEOUT_MS || '20000');
+    constructor(config?: { apiKey?: string; model?: string; timeoutMs?: number }) {
+        this.apiKey = config?.apiKey || process.env.OPENAI_API_KEY || '';
+        this.model = config?.model || process.env.OPENAI_MODEL || 'gpt-4o';
+        this.timeoutMs = config?.timeoutMs || parseInt(process.env.TEMPLATE_AI_TIMEOUT_MS || '20000');
     }
 
     async generateIntent(prompt: string): Promise<VisualIntent> {

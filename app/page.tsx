@@ -59,7 +59,7 @@ export default function Dashboard() {
     const testAI = async () => {
         setTestResult(null);
         try {
-            const res = await fetch('/api/settings/test-ai', { method: 'POST' });
+            const res = await fetch('/api/settings/test-studio-ai', { method: 'POST' });
             const data = await res.json();
             setTestResult(data);
         } catch (error: any) {
@@ -204,13 +204,14 @@ export default function Dashboard() {
         const performSync = async () => {
             if (!project?.id) return;
             
-            // Only poll if project is in a transitional state
-            const isTransitional = 
-                project.status === 'processing' || 
-                project.alignmentStatus === 'processing' || 
-                project.alignmentStatus === 'none' && project.audioOriginalPath;
+            // Terminal states where we stop polling
+            const isTerminal = 
+                project.status === 'ready' || 
+                project.status === 'failed' || 
+                project.alignmentStatus === 'completed' || 
+                project.alignmentStatus === 'failed';
 
-            if (!isTransitional) {
+            if (isTerminal) {
                 if (pollingTimer) clearInterval(pollingTimer);
                 return;
             }
