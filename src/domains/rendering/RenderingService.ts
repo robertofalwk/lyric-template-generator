@@ -61,7 +61,7 @@ export class RenderingService {
 
             await renderMedia({
                 composition: {
-                    id: project.aspectRatio === '16:9' ? 'LyricVideoLandscape' : 'LyricVideo',
+                    id: project.aspectRatio === '16:9' ? 'LyricVideoProLandscape' : 'LyricVideoPro',
                     width: project.aspectRatio === '9:16' ? 1080 : 1920,
                     height: project.aspectRatio === '9:16' ? 1920 : 1080,
                     fps: 30,

@@ -73,6 +73,11 @@ export class TemplateGenerator {
             backgroundOverlayColor: '#000000',
             backgroundOverlayOpacity: intent.backgroundMode === 'blur' ? 0.3 : 0,
             
+            // SuperTemplate Extensions (V7)
+            visualFx: style.visualFx,
+            textBehavior: style.textBehavior,
+            cameraMotion: style.cameraMotion,
+            
             // Metadata
             metadata: {
                 sourceType: 'ai-generated' as const,

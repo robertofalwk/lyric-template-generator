@@ -197,6 +197,24 @@ export default function Dashboard() {
         }
     };
 
+    const handleAutoDirect = async () => {
+        if (!project || !project.timeline) return;
+        setIsProcessing(true);
+        setStatusMsg('Mastering Visual Direction with IA...');
+        try {
+            const res = await fetch(`/api/projects/${project.id}/direct`, { method: 'POST' });
+            if (!res.ok) throw new Error('AI Direction failed');
+            
+            const syncRes = await fetch(`/api/projects/${project.id}`);
+            setProject(await syncRes.json());
+            alert('Studio Pro: Visual sequence mastered and scenes orchestrated.');
+        } catch (error: any) {
+            alert(`Director Error: ${error.message}`);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     // V7 Alpha: Studio Signal Rehydration & Polling logic
     useEffect(() => {
         let pollingTimer: NodeJS.Timeout | null = null;
@@ -308,6 +326,24 @@ export default function Dashboard() {
                         
                         <div className="flex items-center gap-6">
                             {health?.status === 'degraded' && <div className="p-3 bg-yellow-500/10 rounded-xl text-yellow-500"><Activity size={16}/></div>}
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={handleAutoDirect}
+                                    disabled={!project?.timeline || isProcessing}
+                                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-all disabled:opacity-50"
+                                >
+                                    ✨ Gerar Direção Completa com IA
+                                </button>
+                                <button 
+                                    disabled={isProcessing}
+                                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-all"
+                                >
+                                    <label className="cursor-pointer flex items-center gap-2">
+                                        📁 {project?.audioOriginalPath ? 'Substituir Áudio' : 'Anexar Áudio'}
+                                        <input type="file" className="hidden" accept="audio/*" onChange={handleFileUpload} />
+                                    </label>
+                                </button>
+                            </div>
                             <button 
                                 onClick={() => setView('hub')}
                                 className="px-6 py-2.5 bg-zinc-900 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center gap-3"

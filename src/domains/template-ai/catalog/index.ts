@@ -15,11 +15,51 @@ export const COLOR_PALETTES = {
 };
 
 export const STYLE_PRESETS = {
-    'clean': { fontWeight: '400', textTransform: 'none' as const, wordScaleActive: 1, animationIn: 'fade' as const },
-    'aggressive': { fontWeight: '900', textTransform: 'uppercase' as const, wordScaleActive: 1.2, animationIn: 'zoom' as const },
-    'elegant': { fontWeight: '300', textTransform: 'capitalize' as const, wordScaleActive: 1.05, animationIn: 'slide-up' as const },
-    'impactful': { fontWeight: '800', textTransform: 'uppercase' as const, wordScaleActive: 1.1, animationIn: 'zoom' as const },
-    'retro': { fontWeight: '600', textTransform: 'none' as const, wordScaleActive: 1, animationIn: 'fade' as const }
+    'clean': { 
+        fontWeight: '400', 
+        textTransform: 'none' as const, 
+        wordScaleActive: 1, 
+        animationIn: 'fade' as const,
+        visualFx: { vignette: 0.5, chromaticAberration: 0 },
+        textBehavior: { mode: 'word_by_word' as const, scrollDirection: 'none' as const },
+        cameraMotion: { preset: 'zoom_drift' as const, intensity: 0.5 }
+    },
+    'aggressive': { 
+        fontWeight: '900', 
+        textTransform: 'uppercase' as const, 
+        wordScaleActive: 1.2, 
+        animationIn: 'zoom' as const,
+        visualFx: { wordShake: true, chromaticAberration: 2, grain: 0.3 },
+        textBehavior: { mode: 'word_by_word' as const, scrollDirection: 'none' as const },
+        cameraMotion: { preset: 'micro_shake' as const, intensity: 1.5 }
+    },
+    'elegant': { 
+        fontWeight: '300', 
+        textTransform: 'capitalize' as const, 
+        wordScaleActive: 1.05, 
+        animationIn: 'slide-up' as const,
+        visualFx: { wordBlurIn: true, vignette: 0.8 },
+        textBehavior: { mode: 'rolling_lines' as const, scrollDirection: 'vertical' as const, maxLinesVisible: 2 },
+        cameraMotion: { preset: 'parallax' as const, intensity: 0.8 }
+    },
+    'impactful': { 
+        fontWeight: '800', 
+        textTransform: 'uppercase' as const, 
+        wordScaleActive: 1.1, 
+        animationIn: 'zoom' as const,
+        visualFx: { wordGlow: true, strokeFlash: true },
+        textBehavior: { mode: 'word_by_word' as const, scrollDirection: 'none' as const },
+        cameraMotion: { preset: 'push_in' as const, intensity: 1.2 }
+    },
+    'retro': { 
+        fontWeight: '600', 
+        textTransform: 'none' as const, 
+        wordScaleActive: 1, 
+        animationIn: 'fade' as const,
+        visualFx: { grain: 0.5, vignette: 0.6 },
+        textBehavior: { mode: 'karaoke_bar' as const, scrollDirection: 'none' as const },
+        cameraMotion: { preset: 'dramatic_hold' as const, intensity: 1 }
+    }
 };
 
 export const GENRE_PRESETS = {

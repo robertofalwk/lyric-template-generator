@@ -41,6 +41,50 @@ export const BackgroundAssetSchema = z.object({
     createdAt: z.string().datetime(),
 });
 
+// --- SuperTemplate Architecture (V7) ---
+export const VisualFxSchema = z.object({
+    wordGlow: z.boolean().default(false),
+    wordPulse: z.boolean().default(false),
+    wordPop: z.boolean().default(false),
+    wordShake: z.boolean().default(false),
+    wordBlurIn: z.boolean().default(false),
+    strokeFlash: z.boolean().default(false),
+    chromaticAberration: z.number().default(0), 
+    grain: z.number().default(0),
+    vignette: z.number().default(0),
+});
+
+export const TextBehaviorSchema = z.object({
+    mode: z.enum(['word_by_word', 'rolling_lines', 'karaoke_bar', 'cinematic_blocks']).default('word_by_word'),
+    scrollDirection: z.enum(['vertical', 'horizontal', 'none']).default('none'),
+    scrollSpeed: z.number().default(1),
+    maxLinesVisible: z.number().default(1),
+    activeWordLingerMs: z.number().default(0),
+    anticipationMs: z.number().default(50),
+});
+
+export const CameraMotionSchema = z.object({
+    preset: z.enum(['none', 'zoom_drift', 'push_in', 'parallax', 'micro_shake', 'dramatic_hold']).default('none'),
+    intensity: z.number().default(1),
+});
+
+export const ArtAllocationSchema = z.object({
+    backgroundAssetId: z.string().optional(),
+    overlayAssetId: z.string().optional(),
+    presetId: z.string().optional(),
+    intensity: z.enum(['low', 'medium', 'high']).default('medium'),
+});
+
+export const SceneManifestSchema = z.object({
+    scenes: z.array(z.object({
+        id: z.string(),
+        startMs: z.number(),
+        endMs: z.number(),
+        templateOverride: z.record(z.string(), z.any()).optional(),
+        art: ArtAllocationSchema.optional(),
+    })),
+});
+
 // --- Template (MASTER CONTRACT V6.2) ---
 export const TemplateSchema = z.object({
     id: z.string(),
@@ -116,13 +160,60 @@ export const TemplateSchema = z.object({
         aiRefinedAt: z.string().optional(),
         fallbackUsed: z.boolean().default(false),
         interpretationSummary: z.string().optional(),
-    }).default(() => ({
+    }).default({
         sourceType: 'stock' as const,
         version: 1,
         tags: [],
         isFavorite: false,
         fallbackUsed: false,
-    })),
+    }),
+
+    // --- SuperTemplate Blocks (V7 Premium Engine) ---
+    visualFx: z.object({
+        wordGlow: z.boolean().default(false),
+        wordPulse: z.boolean().default(false),
+        wordPop: z.boolean().default(false),
+        wordShake: z.boolean().default(false),
+        wordBlurIn: z.boolean().default(false),
+        strokeFlash: z.boolean().default(false),
+        chromaticAberration: z.number().default(0), 
+        grain: z.number().default(0),
+        vignette: z.number().default(0),
+    }).default({
+        wordGlow: false,
+        wordPulse: false,
+        wordPop: false,
+        wordShake: false,
+        wordBlurIn: false,
+        strokeFlash: false,
+        chromaticAberration: 0,
+        grain: 0,
+        vignette: 0
+    }),
+
+    textBehavior: z.object({
+        mode: z.enum(['word_by_word', 'rolling_lines', 'karaoke_bar', 'cinematic_blocks']).default('word_by_word'),
+        scrollDirection: z.enum(['vertical', 'horizontal', 'none']).default('none'),
+        scrollSpeed: z.number().default(1),
+        maxLinesVisible: z.number().default(1),
+        activeWordLingerMs: z.number().default(0),
+        anticipationMs: z.number().default(50),
+    }).default({
+        mode: 'word_by_word',
+        scrollDirection: 'none',
+        scrollSpeed: 1,
+        maxLinesVisible: 1,
+        activeWordLingerMs: 0,
+        anticipationMs: 50
+    }),
+
+    cameraMotion: z.object({
+        preset: z.enum(['none', 'zoom_drift', 'push_in', 'parallax', 'micro_shake', 'dramatic_hold']).default('none'),
+        intensity: z.number().default(1),
+    }).default({
+        preset: 'none',
+        intensity: 1
+    }),
 });
 
 // --- Project Scenes ---

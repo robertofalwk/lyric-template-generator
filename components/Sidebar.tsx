@@ -295,55 +295,72 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <Cpu size={10}/> Local Fallback
                                 </div>
                             )}
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 mb-6 block">Visual Intent Prompt</label>
-                            <textarea 
-                                className="w-full h-24 bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-purple-500/30 resize-none mb-6 font-medium leading-relaxed"
-                                placeholder="Direct the visual mood..."
-                                value={aiPrompt}
-                                onChange={e => setAiPrompt(e.target.value)}
-                            />
-                            <button 
-                                onClick={handleAIGenerate}
-                                className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-purple-500/20 transition-all flex items-center justify-center gap-3"
-                            >
-                                {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <><Sparkles size={14}/> Interpret Strategy</>}
-                            </button>
-                        </section>
-
-                        {currentTemplate && (
-                            <section className="p-10 rounded-[2.5rem] bg-zinc-900/50 border border-white/5 shadow-2xl">
-                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600 mb-6 block">Studio Fine-Tune</label>
-                                <div className="relative group">
-                                    <input 
-                                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-xs text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-500/30 font-medium group-hover:border-white/10 transition-all font-bold"
-                                        placeholder="e.g., Use luxury cinematic font..."
-                                        value={refinePrompt}
-                                        onChange={e => setRefinePrompt(e.target.value)}
-                                    />
-                                    <button 
-                                        onClick={handleAIRefine}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500 hover:text-white transition-all"
-                                    >
-                                        {isRefining ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                                    </button>
-                                </div>
-                            </section>
-                        )}
-                        
-                        {(window as any).__LAST_VARIANTS__?.map((v: any, i: number) => (
-                            <div key={i} className="p-6 bg-zinc-900 border border-white/5 rounded-3xl flex flex-col gap-4 group hover:border-purple-500/30 transition-all">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                    <span className="text-zinc-400 flex items-center gap-2"><Layers size={14}/> {v.type}</span>
-                                    <span className={v.score > 80 ? 'text-emerald-500 font-bold' : 'text-yellow-500 font-bold'}>{v.score}% Score</span>
-                                </div>
+                            
+                            <div className="space-y-6">
+                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 mb-6 block">Visual Strategy</label>
+                                <textarea 
+                                    className="w-full h-24 bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-xs text-zinc-300 focus:outline-none focus:ring-1 focus:ring-purple-500/30 resize-none font-medium leading-relaxed"
+                                    placeholder="Direct the visual mood..."
+                                    value={aiPrompt}
+                                    onChange={e => setAiPrompt(e.target.value)}
+                                />
                                 <button 
-                                    onClick={() => onTemplateSelect(v.template)}
-                                    className="w-full py-4 bg-white text-black text-[9px] font-black uppercase tracking-[0.4em] rounded-xl hover:bg-zinc-200 transition-all shadow-xl shadow-black/20"
+                                    onClick={handleAIGenerate}
+                                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-purple-500/20 transition-all flex items-center justify-center gap-3"
                                 >
-                                    Lock Strategy
+                                    {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <><Sparkles size={14}/> Interpret Strategy</>}
                                 </button>
                             </div>
-                        ))}
+
+                            {currentTemplate && (
+                                <div className="mt-8 space-y-4 p-4 bg-zinc-900/50 border border-white/5 rounded-xl">
+                                    <div className="flex items-center gap-2 text-purple-400 font-bold text-[10px] uppercase tracking-wider">
+                                        <Sparkles size={14}/> Visual DNA Mastered
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-[9px]">
+                                        <div className="p-2 bg-black/40 rounded-lg border border-white/5">
+                                            <div className="text-zinc-500 mb-1">Text Mode</div>
+                                            <div className="text-white font-mono uppercase">{currentTemplate.textBehavior?.mode || 'Word by Word'}</div>
+                                        </div>
+                                        <div className="p-2 bg-black/40 rounded-lg border border-white/5">
+                                            <div className="text-zinc-500 mb-1">Camera DNS</div>
+                                            <div className="text-white font-mono uppercase">{currentTemplate.cameraMotion?.preset || 'None'}</div>
+                                        </div>
+                                        <div className="p-2 bg-black/40 rounded-lg border border-white/5">
+                                            <div className="text-zinc-500 mb-1">Visual FX</div>
+                                            <div className="text-white font-mono uppercase">
+                                                {currentTemplate.visualFx?.chromaticAberration ? 'Chromatic ' : ''}
+                                                {currentTemplate.visualFx?.grain ? 'Grain ' : ''}
+                                                {currentTemplate.visualFx?.vignette ? 'Vignette' : 'Standard'}
+                                            </div>
+                                        </div>
+                                        <div className="p-2 bg-black/40 rounded-lg border border-white/5">
+                                            <div className="text-zinc-500 mb-1">Highlight</div>
+                                            <div className="text-white font-mono uppercase">{currentTemplate.highlightMode}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-8 space-y-2">
+                                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest pl-1">Refine Visual Evolution</label>
+                                <div className="relative">
+                                    <textarea 
+                                        value={refinePrompt}
+                                        onChange={(e) => setRefinePrompt(e.target.value)}
+                                        placeholder="Add glow, change to rolling lines, make it more kinetic..."
+                                        className="w-full bg-zinc-900 border border-white/5 rounded-xl p-4 text-xs text-white focus:outline-none focus:border-purple-500 h-24 resize-none transition-all pr-12"
+                                    />
+                                    <button 
+                                        onClick={() => refinePrompt && handleAIRefine()}
+                                        disabled={isRefining || !refinePrompt}
+                                        className="absolute bottom-4 right-4 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all disabled:opacity-50"
+                                    >
+                                        {isRefining ? <Loader2 className="animate-spin" size={16}/> : <Send size={16}/>}
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 )}
 

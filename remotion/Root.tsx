@@ -4,6 +4,7 @@ import React from 'react';
 
 loadFont();
 import { LyricVideo } from './compositions/LyricVideo';
+import { LyricVideoPro } from './compositions/LyricVideoPro';
 import { Timeline, Template } from '@/src/schemas';
 import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
 
@@ -52,6 +53,36 @@ export const RemotionRoot: React.FC = () => {
                     audioSrc: '',
                     timeline: defaultTimeline,
                     template: { ...defaultTemplate, ratio: '16:9' } as Template
+                }}
+            />
+            <Composition
+                id="LyricVideoPro"
+                component={LyricVideoPro as any}
+                durationInFrames={1800}
+                fps={30}
+                width={1080}
+                height={1920}
+                defaultProps={{
+                    audioSrc: '',
+                    timeline: defaultTimeline,
+                    globalTemplate: defaultTemplate as any,
+                    scenes: [],
+                    fps: 30
+                }}
+            />
+            <Composition
+                id="LyricVideoProLandscape"
+                component={LyricVideoPro as any}
+                durationInFrames={1800}
+                fps={30}
+                width={1920}
+                height={1080}
+                defaultProps={{
+                    audioSrc: '',
+                    timeline: defaultTimeline,
+                    globalTemplate: { ...defaultTemplate, ratio: '16:9' } as any,
+                    scenes: [],
+                    fps: 30
                 }}
             />
         </>
