@@ -133,38 +133,63 @@ export default function Dashboard() {
         }
     };
 
-    // V7 Auto-Sync Polling
+    // V7 Alpha: Studio Signal Rehydration & Polling logic
     useEffect(() => {
-        let timer: NodeJS.Timeout;
+        let pollingTimer: NodeJS.Timeout | null = null;
         
-        const syncProject = async () => {
-            if (!project || (project.status !== 'processing' && project.alignmentStatus !== 'processing')) return;
+        const performSync = async () => {
+            if (!project?.id) return;
             
+            // Only poll if project is in a transitional state
+            const isTransitional = 
+                project.status === 'processing' || 
+                project.alignmentStatus === 'processing' || 
+                project.alignmentStatus === 'none' && project.audioOriginalPath;
+
+            if (!isTransitional) {
+                if (pollingTimer) clearInterval(pollingTimer);
+                return;
+            }
+
             try {
                 const res = await fetch(`/api/projects/${project.id}`);
                 if (res.ok) {
                     const latest = await res.json();
                     
-                    // Update main project state
-                    if (JSON.stringify(latest) !== JSON.stringify(project)) {
+                    // Logic: Update state if backend has moved forward
+                    if (
+                        latest.status !== project.status || 
+                        latest.alignmentStatus !== project.alignmentStatus ||
+                        (latest.timeline && !project.timeline)
+                    ) {
                         setProject(latest);
                         if (latest.timeline) setTimeline(latest.timeline);
                         
-                        // If it's done or failed, we can stop polling for the job specifically here
-                        if (latest.status !== 'processing') {
-                            fetchProjects(); // Refresh hub
+                        // If job finished, refresh the hub projects list too
+                        if (latest.status !== 'processing' && latest.alignmentStatus !== 'processing') {
+                            fetchProjects();
                         }
                     }
                 }
-            } catch (e) {}
+            } catch (err) {
+                console.error('[Polling Error]', err);
+            }
         };
 
-        if (project && (project.status === 'processing' || project.alignmentStatus === 'processing')) {
-            timer = setInterval(syncProject, 3000);
+        if (project?.id) {
+            // Immediate sync check on mount/project change
+            performSync();
+            
+            // Set up interval for active processing
+            if (project.status === 'processing' || project.alignmentStatus === 'processing') {
+                pollingTimer = setInterval(performSync, 3000);
+            }
         }
 
-        return () => clearInterval(timer);
-    }, [project, project?.status, project?.alignmentStatus]);
+        return () => {
+            if (pollingTimer) clearInterval(pollingTimer);
+        };
+    }, [project?.id, project?.status, project?.alignmentStatus]);
 
     return (
         <div className="flex flex-col h-screen bg-black text-white selection:bg-purple-500/30 font-sans tracking-tight">

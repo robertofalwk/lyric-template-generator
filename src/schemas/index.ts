@@ -195,6 +195,7 @@ export const ProjectSchema = z.object({
     // Data Structure
     timeline: TimelineSchema.optional().nullable(),
     scenes: z.array(ProjectSceneSchema).default([]),
+    errorMessage: z.string().optional().nullable(),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;

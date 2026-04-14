@@ -23,8 +23,8 @@ export class ProjectRepository {
                 audioProcessedPath, lyricsRaw, lyricsNormalized, 
                 selectedTemplateId, aspectRatio, status, 
                 alignmentStatus, renderStatus, exportFormats, 
-                settings, latestTimelinePath, timeline
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                settings, latestTimelinePath, timeline, errorMessage
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -44,7 +44,8 @@ export class ProjectRepository {
             JSON.stringify(validated.exportFormats),
             JSON.stringify(validated.settings),
             validated.latestTimelinePath || null,
-            validated.timeline ? JSON.stringify(validated.timeline) : null
+            validated.timeline ? JSON.stringify(validated.timeline) : null,
+            validated.errorMessage || null
         );
     }
 

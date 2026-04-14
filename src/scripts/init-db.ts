@@ -30,7 +30,8 @@ db.exec(`
     exportFormats TEXT,
     settings TEXT,
     latestTimelinePath TEXT,
-    timeline TEXT
+    timeline TEXT,
+    errorMessage TEXT
   )
 `);
 

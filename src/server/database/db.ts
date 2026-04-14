@@ -26,7 +26,8 @@ db.exec(`
         exportFormats TEXT,
         settings TEXT, -- JSON
         latestTimelinePath TEXT,
-        timeline TEXT -- JSON
+        timeline TEXT, -- JSON
+        errorMessage TEXT
     );
 
     CREATE TABLE IF NOT EXISTS project_scenes (

@@ -96,9 +96,18 @@ async function processQueue() {
                 const project = await projectRepository.findById(currentJob.projectId);
                 if (project) {
                     if (currentJob.type === 'alignment') {
-                        await projectRepository.save({ ...project, alignmentStatus: 'failed', status: 'failed' });
+                        await projectRepository.save({ 
+                            ...project, 
+                            alignmentStatus: 'failed', 
+                            status: 'failed',
+                            errorMessage: error.message
+                        });
                     } else {
-                        await projectRepository.save({ ...project, renderStatus: 'failed' });
+                        await projectRepository.save({ 
+                            ...project, 
+                            renderStatus: 'failed',
+                            errorMessage: error.message
+                        });
                     }
                 }
             }
