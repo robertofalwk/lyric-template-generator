@@ -1,6 +1,6 @@
 import { Template } from '@/src/schemas';
 
-export const TEMPLATES_REGISTRY: Template[] = [
+export const TEMPLATES_REGISTRY = [
     {
         id: 'minimal-clean',
         name: 'Minimal Clean',
@@ -15,7 +15,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         strokeWidth: 0,
         alignment: 'center',
         position: { x: 50, y: 50 },
-        positionY: 50,
         animationIn: 'fade',
         animationOut: 'fade',
         highlightMode: 'word',
@@ -42,7 +41,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         glowRadius: 20,
         alignment: 'center',
         position: { x: 50, y: 50 },
-        positionY: 50,
         animationIn: 'zoom',
         animationOut: 'zoom',
         highlightMode: 'word',
@@ -67,7 +65,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         strokeWidth: 4,
         alignment: 'center',
         position: { x: 50, y: 45 },
-        positionY: 45,
         animationIn: 'slide-up',
         animationOut: 'slide-down',
         highlightMode: 'word',
@@ -91,7 +88,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         activeWordColor: '#FFFFFF',
         alignment: 'center',
         position: { x: 50, y: 80 },
-        positionY: 80,
         animationIn: 'fade',
         animationOut: 'fade',
         highlightMode: 'line',
@@ -115,7 +111,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         activeWordColor: '#FFFFFF',
         alignment: 'left',
         position: { x: 10, y: 60 },
-        positionY: 60,
         animationIn: 'slide-up',
         animationOut: 'none',
         highlightMode: 'word',
@@ -144,7 +139,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         glowRadius: 15,
         alignment: 'center',
         position: { x: 50, y: 50 },
-        positionY: 50,
         animationIn: 'zoom',
         animationOut: 'none',
         highlightMode: 'word',
@@ -167,7 +161,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         activeWordColor: '#FFFFFF',
         alignment: 'center',
         position: { x: 50, y: 50 },
-        positionY: 50,
         animationIn: 'fade',
         animationOut: 'none',
         highlightMode: 'line',
@@ -193,7 +186,6 @@ export const TEMPLATES_REGISTRY: Template[] = [
         strokeWidth: 2,
         alignment: 'center',
         position: { x: 50, y: 50 },
-        positionY: 50,
         animationIn: 'zoom',
         animationOut: 'none',
         highlightMode: 'word',
@@ -205,4 +197,4 @@ export const TEMPLATES_REGISTRY: Template[] = [
         blur: false,
         shadow: false
     }
-];
+] as unknown as Template[];

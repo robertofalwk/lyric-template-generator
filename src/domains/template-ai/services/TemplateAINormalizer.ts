@@ -7,7 +7,7 @@ export class TemplateAINormalizer {
     private static ALLOWED_MODES = ['color', 'image', 'blur', 'video', 'transparent'];
 
     static normalizeIntent(aiResponse: any): VisualIntent {
-        let font = aiResponse.fontFamily || 'Inter';
+        let font = aiResponse.font || aiResponse.fontFamily || 'Inter';
         if (!this.ALLOWED_FONTS.includes(font)) font = 'Inter';
 
         let palette = aiResponse.palette || 'minimal';
@@ -17,14 +17,15 @@ export class TemplateAINormalizer {
         if (!this.ALLOWED_MODES.includes(mode)) mode = 'color';
 
         return {
-            mood: aiResponse.mood || 'neutral',
-            fontFamily: font as any,
+            mood: aiResponse.mood || 'clean',
+            font,
             palette: palette as any,
-            backgroundMode: mode as any,
+            backgroundMode: mode === 'blur' || mode === 'transparent' ? mode : 'color',
+            isNeon: palette.includes('neon') || palette.includes('cyber'),
             emphasis: aiResponse.emphasis || 'word',
             intensity: aiResponse.intensity || 'medium',
             platform: aiResponse.platform || 'reels',
-            summary: aiResponse.summary || 'AI Optimized Design'
+            isComposite: Boolean(aiResponse.isComposite)
         };
     }
 

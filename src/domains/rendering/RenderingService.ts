@@ -1,4 +1,5 @@
-import { renderMedia, bundle } from '@remotion/renderer';
+import { renderMedia } from '@remotion/renderer';
+import * as RemotionRenderer from '@remotion/renderer';
 import { Project, Template, ProjectScene } from '@/src/schemas';
 import { TemplateService } from '../templates/TemplateService';
 import { backgroundAssetRepository } from '@/src/server/repositories/BackgroundAssetRepository';
@@ -11,7 +12,7 @@ export class RenderingService {
         project: Project, 
         jobId: string, 
         customTemplate?: Template,
-        onProgress: (progress: number, log: string) => void
+        onProgress: (progress: number, log: string) => void = () => undefined
     ) {
         const outputDir = path.join(process.cwd(), 'storage', 'renders', jobId);
         await fs.mkdir(outputDir, { recursive: true });
@@ -48,7 +49,9 @@ export class RenderingService {
         }));
 
         onProgress(5, 'Bundling V6.2 Consolidated Payload...');
-        const bundleLocation = await bundle({ entryPoint });
+        const bundleLocation = await (RemotionRenderer as unknown as {
+            bundle: (params: { entryPoint: string }) => Promise<string>;
+        }).bundle({ entryPoint });
 
         onProgress(20, 'Mastering High-Fidelity Signal...');
 
@@ -63,7 +66,7 @@ export class RenderingService {
                     height: project.aspectRatio === '9:16' ? 1920 : 1080,
                     fps: 30,
                     durationInFrames: this.calculateDuration(project),
-                },
+                } as any,
                 serveUrl: bundleLocation,
                 outputLocation: mp4Path,
                 inputProps: { 

@@ -34,6 +34,10 @@ export const BackgroundAssetSchema = z.object({
     publicPath: z.string(),
     thumbnailPath: z.string().optional(),
     proxyPath: z.string().optional(),
+    prompt: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    metadata: z.record(z.string(), z.unknown()).default({}),
+    dominantColors: z.array(z.string()).default([]),
     createdAt: z.string().datetime(),
 });
 
@@ -112,7 +116,13 @@ export const TemplateSchema = z.object({
         aiRefinedAt: z.string().optional(),
         fallbackUsed: z.boolean().default(false),
         interpretationSummary: z.string().optional(),
-    }).default({}),
+    }).default(() => ({
+        sourceType: 'stock' as const,
+        version: 1,
+        tags: [],
+        isFavorite: false,
+        fallbackUsed: false,
+    })),
 });
 
 // --- Project Scenes ---
@@ -129,7 +139,7 @@ export const ProjectSceneSchema = z.object({
     intensity: z.enum(['low', 'medium', 'high']).default('medium'),
     transitionIn: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
     transitionOut: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
-    settings: z.record(z.any()).default({}),
+    settings: z.record(z.string(), z.unknown()).default({}),
     visualScore: z.number().optional(),
     createdAt: z.string().datetime(),
 });
@@ -138,13 +148,13 @@ export const ProjectSceneSchema = z.object({
 export const ProjectCommentSchema = z.object({
     id: z.string(),
     projectId: z.string(),
-    sceneId: z.string().optional(),
-    timestampMs: z.number().optional(),
+    sceneId: z.string().optional().nullable(),
+    timestampMs: z.number().optional().nullable(),
     message: z.string(),
     type: z.enum(['note', 'issue', 'approval', 'warning']).default('note'),
     status: z.enum(['open', 'resolved']).default('open'),
     createdAt: z.string().datetime(),
-    resolvedAt: z.string().datetime().optional(),
+    resolvedAt: z.string().datetime().optional().nullable(),
 });
 
 export const TemplateVariationSchema = z.object({
@@ -172,6 +182,32 @@ export const ProjectSettingsSchema = z.object({
 });
 
 export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
+
+export const StylePackSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional().nullable(),
+    config: z.record(z.string(), z.unknown()),
+    category: z.string(),
+    isPublic: z.boolean().default(false),
+    createdAt: z.string().datetime(),
+});
+
+export type StylePack = z.infer<typeof StylePackSchema>;
+
+export const RenderHistorySchema = z.object({
+    id: z.string(),
+    projectId: z.string(),
+    jobId: z.string().optional().nullable(),
+    presetId: z.string().optional().nullable(),
+    snapshot: z.string(),
+    outputPath: z.string().optional().nullable(),
+    posterPath: z.string().optional().nullable(),
+    status: z.enum(['queued', 'processing', 'completed', 'failed']),
+    createdAt: z.string().datetime(),
+});
+
+export type RenderHistory = z.infer<typeof RenderHistorySchema>;
 
 // --- Project ---
 export const ProjectSchema = z.object({
@@ -203,7 +239,12 @@ export const ProjectSchema = z.object({
     
     // Configuration & Exports
     exportFormats: z.array(z.string()).default([]),
-    settings: ProjectSettingsSchema.default({}),
+    settings: ProjectSettingsSchema.default(() => ({
+        language: 'en',
+        useVocalIsolation: true,
+        wordLevelTiming: true,
+        aiProvider: 'local' as const,
+    })),
     
     // Data Structure
     timeline: TimelineSchema.optional().nullable(),
@@ -225,7 +266,7 @@ export const RenderJobSchema = z.object({
     finishedAt: z.string().datetime().optional().nullable(),
     outputPath: z.string().optional().nullable(),
     logs: z.array(z.string()).default([]),
-    payload: z.record(z.any()).optional().nullable(),
+    payload: z.record(z.string(), z.unknown()).optional().nullable(),
     errorMessage: z.string().optional().nullable(),
 });
 

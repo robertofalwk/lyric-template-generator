@@ -6,7 +6,7 @@ const STORAGE_ROOT = path.join(process.cwd(), 'storage');
 const PROJECTS_FILE = path.join(STORAGE_ROOT, 'projects.json');
 const JOBS_FILE = path.join(STORAGE_ROOT, 'jobs.json');
 
-async function ensureFile(file: string, defaultValue: any = []) {
+async function ensureFile(file: string, defaultValue: unknown[] = []) {
     try {
         await fs.access(file);
     } catch {

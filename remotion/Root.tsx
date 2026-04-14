@@ -1,5 +1,6 @@
 import { loadFont } from '@remotion/google-fonts/Inter';
 import { Composition } from 'remotion';
+import React from 'react';
 
 loadFont();
 import { LyricVideo } from './compositions/LyricVideo';
@@ -22,11 +23,13 @@ const defaultTimeline: Timeline = {
 const defaultTemplate = TEMPLATES_REGISTRY[0];
 
 export const RemotionRoot: React.FC = () => {
+    const LyricVideoComponent = LyricVideo as unknown as React.ComponentType<Record<string, unknown>>;
+
     return (
         <>
             <Composition
                 id="LyricVideo"
-                component={LyricVideo}
+                component={LyricVideoComponent}
                 durationInFrames={1800} // 1 minute @ 30fps
                 fps={30}
                 width={1080}
@@ -40,7 +43,7 @@ export const RemotionRoot: React.FC = () => {
             {/* 16:9 variant */}
             <Composition
                 id="LyricVideoLandscape"
-                component={LyricVideo}
+                component={LyricVideoComponent}
                 durationInFrames={1800}
                 fps={30}
                 width={1920}

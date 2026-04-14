@@ -3,12 +3,13 @@ import { projectRepository } from './repositories/ProjectRepository';
 import { alignmentService } from '../domains/alignment/AlignmentService';
 import { renderingService } from '../domains/rendering/RenderingService';
 import path from 'path';
+import { RenderJob } from '@/src/schemas';
 
 async function processQueue() {
     console.log('👷 Worker started. Polling for jobs...');
 
     while (true) {
-        let currentJob = null;
+        let currentJob: RenderJob | null = null;
         try {
             currentJob = await jobRepository.claimNextQueued();
 

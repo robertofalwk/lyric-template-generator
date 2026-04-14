@@ -13,13 +13,13 @@ export class ProjectCommentRepository {
         const fullComment: ProjectComment = {
             id: comment.id || uuidv4(),
             projectId: comment.projectId,
-            sceneId: comment.sceneId || null,
-            timestampMs: comment.timestampMs || null,
+            sceneId: comment.sceneId ?? null,
+            timestampMs: comment.timestampMs ?? null,
             message: comment.message,
             type: comment.type || 'note',
             status: comment.status || 'open',
             createdAt: comment.createdAt || new Date().toISOString(),
-            resolvedAt: comment.resolvedAt || null,
+            resolvedAt: comment.resolvedAt ?? null,
         };
 
         const validated = ProjectCommentSchema.parse(fullComment);

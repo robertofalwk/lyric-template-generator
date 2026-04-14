@@ -84,15 +84,15 @@ export class TemplateGenerator {
         };
 
         const validated = TemplateSchema.parse(template);
-        const score = TemplateQualityScorer.score(validated);
-        validated.metadata!.qualityScore = score;
+        const quality = TemplateQualityScorer.score(validated);
+        validated.metadata!.qualityScore = quality.score;
 
         return {
             id,
             type,
             template: validated,
-            score,
-            explanation: TemplateQualityScorer.getExplanation(score)
+            score: quality.score,
+            explanation: quality.recommendations[0] || quality.warnings[0]
         };
     }
 
