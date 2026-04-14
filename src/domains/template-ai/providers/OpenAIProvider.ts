@@ -82,6 +82,57 @@ export class OpenAIProvider implements TemplateAIProvider {
         return validated;
     }
 
+    async directVisuals(project: any, timeline: any): Promise<any> {
+        let lyricsPreview = '';
+        if (timeline && timeline.segments) {
+            lyricsPreview = timeline.segments.slice(0, 15).map((s: any) => `[${s.startMs}ms - ${s.endMs}ms] ${s.text}`).join('\n');
+        }
+
+        const system = `You are an elite Music Video Director and Motion Designer.
+        You are directing a lyric video. Analyze the song timing and lyrics provided, then generate a comprehensive execution JSON.
+        
+        The JSON MUST contain EXACTLY this structure:
+        {
+          "visual_intent": {
+             "mood": "string",
+             "colorPalette": "string",
+             "overallPacing": "string"
+          },
+          "super_template": {
+             "baseTemplateId": "kinetic-neon | cinematic-worship | luxury-minimal-motion | social-reels-bold",
+             "textBehaviorOverride": "word_by_word | rolling_lines | cinematic_blocks",
+             "cameraMotionOverride": "push_in | zoom_drift | parallax | micro_shake"
+          },
+          "scene_manifest": [
+             {
+                "id": "scene_1",
+                "name": "string (e.g. Intro build up)",
+                "startMs": number,
+                "endMs": number,
+                "energy": "low | medium | high",
+                "sectionType": "intro | verse | chorus | bridge | outro"
+             }
+          ],
+          "art_allocation": [
+             {
+                "sceneId": "scene_1",
+                "prompt": "Highly detailed midjourney prompt for the scene's background art. Cinematic lighting.",
+                "visualIntensity": "low | medium | high"
+             }
+          ]
+        }
+        
+        Guidelines:
+        1. Base your scenes off the lyrics structure and timestamps provided. Try to group logical verses/choruses (usually scenes are 5-15 seconds long).
+        2. Give each scene an id (scene_1, scene_2, etc.) and match it exactly in block art_allocation.
+        3. Make sure the total duration covers the timestamps provided.`;
+
+        const user = `Project Title: ${project.title}\n\nLyrics Timeline snippet (first 15 segments):\n${lyricsPreview}\n\nPlease generate the full JSON configuration.`;
+
+        const result = await this.callOpenAI<any>(system, user);
+        return result;
+    }
+
     private async callOpenAI<T>(system: string, user: string): Promise<T> {
         if (!this.apiKey) throw new Error('OpenAI API Key missing');
 

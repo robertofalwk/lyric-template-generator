@@ -2,31 +2,71 @@ import { Timeline, ProjectScene, Template, Project } from '@/src/schemas';
 import { v4 as uuid } from 'uuid';
 import { TEMPLATES_REGISTRY } from '../../templates/registry';
 
+import { TemplateAIProviderFactory } from '../providers/TemplateAIProviderFactory';
+
 export interface VisualDirectionManifest {
-    scenes: {
+    visual_intent: {
+        mood: string;
+        colorPalette: string;
+        overallPacing: string;
+    };
+    super_template: {
+        baseTemplateId: string;
+        textBehaviorOverride?: string;
+        cameraMotionOverride?: string;
+    };
+    scene_manifest: {
+        id: string;
         name: string;
         startMs: number;
         endMs: number;
-        mood: string;
-        suggestedTemplateId: string;
-        backgroundPrompt: string;
+        energy: string;
+        sectionType: 'intro' | 'verse' | 'chorus' | 'bridge' | 'outro';
+    }[];
+    art_allocation: {
+        sceneId: string;
+        prompt: string;
+        visualIntensity: 'low' | 'medium' | 'high';
     }[];
 }
 
 export class VisualDirectorService {
-    /**
-     * Auto-directs a project by analyzing lyrics and partitioning into scenes.
-     */
     static async direct(project: Project, timeline: Timeline): Promise<ProjectScene[]> {
-        // For V7, we implement a smart partitioning logic
-        // We look for gaps in timeline > 1s or segments count
+        const provider = TemplateAIProviderFactory.getProvider();
+        
+        try {
+            const aiManifest = await provider.directVisuals(project, timeline);
+            if (aiManifest && aiManifest.scene_manifest && aiManifest.scene_manifest.length > 0) {
+                return aiManifest.scene_manifest.map((s: any) => {
+                    const art = aiManifest.art_allocation?.find((a: any) => a.sceneId === s.id);
+                    return {
+                        id: uuid(),
+                        projectId: project.id,
+                        name: s.name,
+                        startMs: s.startMs,
+                        endMs: s.endMs,
+                        sectionType: s.sectionType || 'verse',
+                        templateId: aiManifest.super_template?.baseTemplateId || 'kinetic-neon',
+                        intensity: art?.visualIntensity || s.energy || 'medium',
+                        transitionIn: 'fade',
+                        transitionOut: 'fade',
+                        settings: {
+                            prompt: art?.prompt,
+                            visual_intent: aiManifest.visual_intent
+                        },
+                        createdAt: new Date().toISOString()
+                    };
+                });
+            }
+        } catch (error) {
+            console.error('AI Director fallback to heuristics:', error);
+        }
+
+        // --- FALLBACK HEURISTIC ---
         const scenes: ProjectScene[] = [];
         const segments = timeline.segments;
-        
         if (segments.length === 0) return [];
 
-        // Simple heuristic for Phase 1: Create a scene for every 4 segments
-        // or based on significant gaps.
         let currentSceneSegments: typeof segments = [];
         let sceneIndex = 1;
 

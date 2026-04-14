@@ -46,4 +46,9 @@ export class LocalHeuristicProvider implements TemplateAIProvider {
 
         return metaAware;
     }
+
+    async directVisuals(project: any, timeline: any): Promise<any> {
+        // Fallback returns empty, VisualDirectorService handles heuristics itself if none.
+        return null;
+    }
 }

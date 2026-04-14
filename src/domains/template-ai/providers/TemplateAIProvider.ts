@@ -6,4 +6,5 @@ export interface TemplateAIProvider {
     generateIntent(prompt: string): Promise<VisualIntent>;
     generateVariants(prompt: string): Promise<TemplateVariation[]>;
     refineTemplate(template: Template, prompt: string): Promise<Template>;
+    directVisuals(project: any, timeline: any): Promise<any>;
 }
