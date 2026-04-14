@@ -9,6 +9,7 @@ export interface SystemHealth {
         database: boolean;
         ffmpeg: boolean;
         python: boolean;
+        aligner: boolean;
         openai: boolean;
         storage: boolean;
     };
@@ -44,8 +45,14 @@ export class SystemHealthService {
 
         // 3. Python Check
         try {
-            const version = execSync('python --version').toString().split('\n')[0];
+            execSync('python --version');
             checks.python = true;
+            
+            // Check for Aligner dependency
+            try {
+                execSync('pip show stable-ts');
+                checks.aligner = true;
+            } catch (e) {}
         } catch (e) {}
 
         // 4. Storage Check

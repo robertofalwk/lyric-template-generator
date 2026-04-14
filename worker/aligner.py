@@ -5,9 +5,9 @@ import argparse
 import traceback
 
 try:
-    import stable_ts as whisper
+    import stable_whisper as whisper
 except ImportError:
-    print("Error: stable-ts not found. Please run 'pip install stable-ts'")
+    print("Error: stable-ts (stable_whisper) not found. Please run 'pip install stable-ts'")
     sys.exit(1)
 
 def align_lyrics(

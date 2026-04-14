@@ -134,7 +134,7 @@ db.exec(`
         FOREIGN KEY(templateId) REFERENCES templates(id)
     );
 
-    CREATE TABLE IF NOT EXISTS jobs (
+    CREATE TABLE IF NOT EXISTS render_jobs (
         id TEXT PRIMARY KEY,
         projectId TEXT NOT NULL,
         type TEXT NOT NULL,

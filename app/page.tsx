@@ -10,7 +10,7 @@ import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
 import { 
     SlidersHorizontal, PlayCircle, Loader2, CheckCircle2, 
     Wand2, ShieldCheck, Box, Settings, LayoutGrid, 
-    Search, FolderOpen, AlertCircle, Plus, Activity
+    Search, FolderOpen, AlertCircle, Plus, Activity, Palette
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -78,11 +78,17 @@ export default function Dashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, lyrics })
             });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to create workspace node');
+            }
+
             const newProject = await res.json();
             setProject(newProject);
             fetchProjects();
             fileInputRef.current?.click();
-        } catch (error) { alert('Project creation failed'); } finally { setIsProcessing(false); }
+        } catch (error: any) { alert(`Studio Error: ${error.message}`); } finally { setIsProcessing(false); }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,14 +102,69 @@ export default function Dashboard() {
                 method: 'POST',
                 body: formData
             });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Upload failed');
+            }
+
             const updated = await res.json();
             setProject(updated);
+            
             // Auto-align
+            setStatusMsg('Initiating Studio Alignment...');
             const alRes = await fetch(`/api/projects/${updated.id}/align`, { method: 'POST' });
-            setActiveJob(await alRes.json());
-            setView('preview');
-        } catch (error) { setIsProcessing(false); }
+            if (!alRes.ok) {
+                const err = await alRes.json();
+                throw new Error(err.error || 'Alignment initiation failed');
+            }
+            
+            const job = await alRes.json();
+            setActiveJob(job);
+            
+            // Re-sync project state immediately
+            const syncRes = await fetch(`/api/projects/${updated.id}`);
+            setProject(await syncRes.json());
+            
+        } catch (error: any) {
+            alert(`Signal Failure: ${error.message}`);
+        } finally {
+            setIsProcessing(false);
+        }
     };
+
+    // V7 Auto-Sync Polling
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        
+        const syncProject = async () => {
+            if (!project || (project.status !== 'processing' && project.alignmentStatus !== 'processing')) return;
+            
+            try {
+                const res = await fetch(`/api/projects/${project.id}`);
+                if (res.ok) {
+                    const latest = await res.json();
+                    
+                    // Update main project state
+                    if (JSON.stringify(latest) !== JSON.stringify(project)) {
+                        setProject(latest);
+                        if (latest.timeline) setTimeline(latest.timeline);
+                        
+                        // If it's done or failed, we can stop polling for the job specifically here
+                        if (latest.status !== 'processing') {
+                            fetchProjects(); // Refresh hub
+                        }
+                    }
+                }
+            } catch (e) {}
+        };
+
+        if (project && (project.status === 'processing' || project.alignmentStatus === 'processing')) {
+            timer = setInterval(syncProject, 3000);
+        }
+
+        return () => clearInterval(timer);
+    }, [project, project?.status, project?.alignmentStatus]);
 
     return (
         <div className="flex flex-col h-screen bg-black text-white selection:bg-purple-500/30 font-sans tracking-tight">
@@ -216,11 +277,47 @@ export default function Dashboard() {
                                         />
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center gap-10 border-2 border-dashed border-zinc-900 rounded-[3rem]">
-                                        <Box size={80} className="text-zinc-900" />
-                                        <div className="text-center flex flex-col gap-4">
-                                            <p className="text-[12px] font-black uppercase tracking-[0.4em] text-zinc-700">Awaiting Signal Ingestion</p>
-                                            <button onClick={() => setView('hub')} className="text-[9px] font-black text-purple-500 uppercase tracking-widest hover:underline">Return to Hub</button>
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-10 border-2 border-dashed border-zinc-900 rounded-[3rem] bg-black/20">
+                                        <div className="relative">
+                                            {project?.status === 'processing' || project?.alignmentStatus === 'processing' ? (
+                                                <Loader2 size={100} className="text-purple-500 animate-[spin_3s_linear_infinite]" />
+                                            ) : (project?.status === 'failed' || project?.alignmentStatus === 'failed') ? (
+                                                <AlertCircle size={80} className="text-rose-500" />
+                                            ) : (project?.status === 'ready' && !activeTemplate) ? (
+                                                <Palette size={80} className="text-purple-500 animate-pulse" />
+                                            ) : (
+                                                <Box size={80} className="text-zinc-900" />
+                                            )}
+                                            {(project?.status === 'processing' || project?.alignmentStatus === 'processing') && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Activity size={24} className="text-white animate-pulse" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-center flex flex-col gap-6 max-w-sm px-10">
+                                            {project?.status === 'failed' || project?.alignmentStatus === 'failed' ? (
+                                                <>
+                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-rose-500">Signal Processing Error</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold leading-relaxed">{project.errorMessage || 'Verify Python/FFmpeg installation and alignment logs.'}</p>
+                                                </>
+                                            ) : (project?.status === 'processing' || project?.alignmentStatus === 'processing') ? (
+                                                <>
+                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-purple-400 animate-pulse">Studio Aligner Working</p>
+                                                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">Synchronizing Narrative with Signal...</p>
+                                                </>
+                                            ) : (project?.status === 'ready' && !activeTemplate) ? (
+                                                <>
+                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-purple-400">Audio Processed</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Select a visualization template from the library</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-[12px] font-black uppercase tracking-[0.4em] text-zinc-700">Awaiting Signal Ingestion</p>
+                                                    <p className="text-[10px] text-zinc-800 font-bold uppercase tracking-widest">Upload audio to begin synchronization</p>
+                                                </>
+                                            )}
+                                            
+                                            <button onClick={() => setView('hub')} className="mt-4 text-[9px] font-black text-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 hover:text-purple-500 px-6 py-3 rounded-xl uppercase tracking-widest transition-all">Return to Hub</button>
                                         </div>
                                     </div>
                                 )}

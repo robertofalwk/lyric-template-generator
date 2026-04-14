@@ -38,10 +38,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             const metadata = await probe(audioPath) as any;
             const duration = metadata.format.duration;
             if (duration > 600) { // 10 mins max
-                return NextResponse.json({ error: 'Audio too long (max 10 mins)' }, { status: 400 });
+                return NextResponse.json({ error: 'Audio Signal too long (max 10 mins)' }, { status: 400 });
             }
-        } catch (err) {
-            return NextResponse.json({ error: 'Failed to probe audio file. Is it valid?' }, { status: 400 });
+        } catch (err: any) {
+            console.error('[FFPROBE_ERROR]', err);
+            const isMissing = err.message.includes('spawn') || err.message.includes('not found') || err.message.includes('ENOENT');
+            return NextResponse.json({ 
+                error: isMissing 
+                    ? 'System Error: FFmpeg/ffprobe is not installed on the server. Please check environment dependencies.' 
+                    : `Audio Validation Failure: ${err.message}`
+            }, { status: isMissing ? 500 : 400 });
         }
 
         const updatedProject = {

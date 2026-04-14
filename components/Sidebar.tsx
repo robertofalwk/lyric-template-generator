@@ -215,15 +215,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* V7 Tabbed Studio Navigation */}
             <div className="h-16 border-b border-white/5 bg-black/40 px-6 flex items-center justify-between overflow-x-auto custom-scrollbar scrollbar-hide shrink-0">
                 <div className="flex gap-2">
-                    {['monitor', 'director', 'assets', 'library', 'review', 'publish'].map(t => (
-                        <button 
-                            key={t}
-                            onClick={() => setTab(t as any)}
-                            className={`text-[8px] font-black uppercase tracking-[0.2em] transition-all px-3 py-2 rounded-lg border ${tab === t ? 'bg-zinc-800 border-white/10 text-white shadow-lg' : 'bg-transparent border-transparent text-zinc-600 hover:text-zinc-400'}`}
-                        >
-                            {t}
-                        </button>
-                    ))}
+                    {['monitor', 'director', 'assets', 'library', 'review', 'publish'].map(t => {
+                        const isLocked = !currentProject?.timeline && ['director', 'library', 'review', 'publish'].includes(t);
+                        return (
+                            <button 
+                                key={t}
+                                disabled={isLocked}
+                                onClick={() => setTab(t as any)}
+                                className={`text-[8px] font-black uppercase tracking-[0.2em] transition-all px-3 py-2 rounded-lg border ${
+                                    isLocked ? 'opacity-20 cursor-not-allowed border-transparent text-zinc-800' :
+                                    tab === t ? 'bg-zinc-800 border-white/10 text-white shadow-lg' : 
+                                    'bg-transparent border-transparent text-zinc-600 hover:text-zinc-400'
+                                }`}
+                                title={isLocked ? 'Ingestion required to unlock this module' : ''}
+                            >
+                                {t}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
