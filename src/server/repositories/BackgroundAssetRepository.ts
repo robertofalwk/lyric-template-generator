@@ -38,11 +38,20 @@ export class BackgroundAssetRepository {
     }
 
     private mapRow(row: any): BackgroundAsset {
+        const parseSafely = (val: string | null, fallback: any) => {
+            if (!val) return fallback;
+            try {
+                return JSON.parse(val);
+            } catch (e) {
+                return fallback;
+            }
+        };
+
         return BackgroundAssetSchema.parse({
             ...row,
-            tags: JSON.parse(row.tags),
-            metadata: JSON.parse(row.metadata),
-            dominantColors: JSON.parse(row.dominantColors),
+            tags: parseSafely(row.tags, []),
+            metadata: parseSafely(row.metadata, {}),
+            dominantColors: parseSafely(row.dominantColors, []),
         });
     }
 }

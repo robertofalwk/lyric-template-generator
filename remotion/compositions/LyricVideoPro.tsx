@@ -31,10 +31,18 @@ export const LyricVideoPro: React.FC<LyricVideoProProps> = ({
             const scale = interpolate(frame, [0, 1000], [1, 1 + (0.1 * motion.intensity)]);
             return { transform: `scale(${scale})` };
         }
+        if (motion.preset === 'push_in') {
+            const scale = interpolate(currentTimeMs, [activeScene?.startMs || 0, activeScene?.endMs || 10000], [1, 1.2 * motion.intensity]);
+            return { transform: `scale(${scale})` };
+        }
         if (motion.preset === 'micro_shake') {
             const x = Math.sin(frame * 0.5) * 2 * motion.intensity;
             const y = Math.cos(frame * 0.4) * 2 * motion.intensity;
             return { transform: `translate(${x}px, ${y}px)` };
+        }
+        if (motion.preset === 'parallax') {
+            const x = Math.sin(frame * 0.1) * 20 * motion.intensity;
+            return { transform: `translateX(${x}px)` };
         }
         return {};
     };
@@ -164,8 +172,26 @@ const TypographyEngine: React.FC<{
     }
 
     if (behavior.mode === 'rolling_lines') {
-        // Implementation of rolling lines would go here
-        return <div>{segment.text}</div>;
+        const activeIdx = timeline.segments.findIndex(s => currentTimeMs >= s.startMs && currentTimeMs <= s.endMs);
+        const scrollY = interpolate(activeIdx, [0, timeline.segments.length], [0, -timeline.segments.length * 40]);
+        
+        return (
+            <div style={{ transform: `translateY(${scrollY}px)`, transition: 'transform 0.5s ease' }}>
+                {timeline.segments.map((seg, i) => {
+                    const isActive = i === activeIdx;
+                    return (
+                        <div key={i} style={{ 
+                            opacity: isActive ? 1 : 0.3,
+                            fontSize: isActive ? '1.2em' : '1em',
+                            transition: 'all 0.5s ease',
+                            margin: '10px 0'
+                        }}>
+                            {seg.text}
+                        </div>
+                    );
+                })}
+            </div>
+        );
     }
 
     return <div>{segment.text}</div>;

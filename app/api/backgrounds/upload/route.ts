@@ -27,6 +27,10 @@ export async function POST(req: NextRequest) {
             sourceType: 'uploaded',
             localPath: filePath,
             publicPath: `/uploads/assets/${fileName}`,
+            thumbnailPath: `/uploads/assets/${fileName}`,
+            tags: [],
+            metadata: {},
+            dominantColors: [],
             createdAt: new Date().toISOString()
         };
 

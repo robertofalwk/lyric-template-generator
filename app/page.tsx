@@ -245,6 +245,11 @@ export default function Dashboard() {
                         latest.alignmentStatus !== project.alignmentStatus ||
                         (latest.timeline && !project.timeline)
                     ) {
+                        // V7 Auto-Direct Trigger
+                        if (latest.alignmentStatus === 'completed' && project.alignmentStatus === 'processing') {
+                            setTimeout(() => handleAutoDirect(), 500);
+                        }
+
                         setProject(latest);
                         if (latest.timeline) setTimeline(latest.timeline);
                         

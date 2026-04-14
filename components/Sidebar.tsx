@@ -61,8 +61,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const fetchAssets = async () => {
         try {
             const res = await fetch('/api/backgrounds');
-            setAssets(await res.json());
-        } catch (e) {}
+            const data = await res.json();
+            setAssets(Array.isArray(data) ? data : []);
+        } catch (e) {
+            setAssets([]);
+        }
     };
 
     const fetchTemplates = async () => {
@@ -361,6 +364,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                             </div>
                         </section>
+
+                        {/* Scene Manifest Hub */}
+                        {currentProject?.scenes && currentProject.scenes.length > 0 && (
+                            <section className="flex flex-col gap-6">
+                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 flex items-center gap-2">
+                                    <Film size={14}/> Studio Scene Manifest
+                                </label>
+                                <div className="space-y-4">
+                                    {currentProject.scenes.map((scene, idx) => (
+                                        <div key={scene.id} className="p-4 rounded-2xl bg-zinc-900/40 border border-white/5 group hover:border-purple-500/30 transition-all">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <div className="text-[10px] font-bold text-zinc-300">Scene {idx + 1}: {scene.sectionType}</div>
+                                                    <div className="text-[8px] text-zinc-600 uppercase font-black tracking-widest">
+                                                        {(scene.startMs / 1000).toFixed(1)}s - {(scene.endMs / 1000).toFixed(1)}s
+                                                    </div>
+                                                </div>
+                                                <div className="px-2 py-0.5 bg-zinc-800 rounded-md text-[7px] font-black uppercase tracking-widest text-zinc-500">
+                                                    {scene.templateId ? scene.templateId.slice(0, 15) : 'Auto'}
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="flex-1 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-purple-500/50" style={{ width: scene.intensity === 'high' ? '100%' : scene.intensity === 'medium' ? '60%' : '30%' }}></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                     </div>
                 )}
 
