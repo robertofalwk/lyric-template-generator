@@ -228,7 +228,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         let isLocked = false;
                         if (!hasProject && t !== 'monitor') isLocked = true;
                         if (hasProject) {
-                            if (t === 'director' && !hasAudio) isLocked = true;
+                            // Director is now unlocked early for strategy planning
                             if (['review', 'publish'].includes(t) && !hasTimeline) isLocked = true;
                         }
 

@@ -129,6 +129,7 @@ export default function Dashboard() {
             const newProject = await res.json();
             setProject(newProject);
             fetchProjects();
+            setView('preview');
             fileInputRef.current?.click();
         } catch (error: any) { alert(`Studio Error: ${error.message}`); } finally { setIsProcessing(false); }
     };
@@ -405,6 +406,7 @@ export default function Dashboard() {
                                             audioSrc={`/api/projects/${project.id}/audio`}
                                             timeline={timeline}
                                             template={activeTemplate}
+                                            scenes={project.scenes}
                                         />
                                     </div>
                                 ) : (

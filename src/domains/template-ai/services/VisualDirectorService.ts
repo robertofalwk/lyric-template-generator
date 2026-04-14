@@ -1,7 +1,7 @@
 import { Timeline, ProjectScene, Template, Project } from '@/src/schemas';
 import { v4 as uuid } from 'uuid';
 import { TEMPLATES_REGISTRY } from '../../templates/registry';
-
+import { backgroundAssetRepository } from '@/src/server/repositories/BackgroundAssetRepository';
 import { TemplateAIProviderFactory } from '../providers/TemplateAIProviderFactory';
 
 export interface VisualDirectionManifest {
@@ -37,8 +37,17 @@ export class VisualDirectorService {
         try {
             const aiManifest = await provider.directVisuals(project, timeline);
             if (aiManifest && aiManifest.scene_manifest && aiManifest.scene_manifest.length > 0) {
-                return aiManifest.scene_manifest.map((s: any) => {
+                // Fetch assets for fallback mapping
+                const availableAssets = await backgroundAssetRepository.findAll();
+
+                return aiManifest.scene_manifest.map((s: any, idx: number) => {
                     const art = aiManifest.art_allocation?.find((a: any) => a.sceneId === s.id);
+                    
+                    // Basic heuristic: try to pick an asset (round robin) if any exist
+                    const assetId = availableAssets.length > 0 
+                        ? availableAssets[idx % availableAssets.length].id 
+                        : undefined;
+
                     return {
                         id: uuid(),
                         projectId: project.id,
@@ -47,6 +56,7 @@ export class VisualDirectorService {
                         endMs: s.endMs,
                         sectionType: s.sectionType || 'verse',
                         templateId: aiManifest.super_template?.baseTemplateId || 'kinetic-neon',
+                        backgroundAssetId: assetId,
                         intensity: art?.visualIntensity || s.energy || 'medium',
                         transitionIn: 'fade',
                         transitionOut: 'fade',

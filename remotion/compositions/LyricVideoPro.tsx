@@ -194,5 +194,67 @@ const TypographyEngine: React.FC<{
         );
     }
 
+    if (behavior.mode === 'karaoke_bar') {
+        return (
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div style={{ opacity: 0.3, color: template.textColor }}>
+                    {segment.text}
+                </div>
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    color: template.activeWordColor,
+                    width: (() => {
+                        const words = segment.words;
+                        if (!words || words.length === 0) return '0%';
+                        if (currentTimeMs >= segment.endMs) return '100%';
+                        if (currentTimeMs <= segment.startMs) return '0%';
+
+                        // Find current word
+                        let currentWordIdx = words.findIndex(w => currentTimeMs >= w.startMs && currentTimeMs <= w.endMs);
+                        if (currentWordIdx === -1) {
+                            // Find the last word that ended
+                            for (let i = words.length - 1; i >= 0; i--) {
+                                if (currentTimeMs > words[i].endMs) {
+                                    return `${((i + 1) / words.length) * 100}%`;
+                                }
+                            }
+                            return '0%';
+                        }
+
+                        const currentWord = words[currentWordIdx];
+                        const wordProgress = Math.max(0, Math.min(1, (currentTimeMs - currentWord.startMs) / (currentWord.endMs - currentWord.startMs)));
+                        const basePercentage = (currentWordIdx / words.length) * 100;
+                        const additionalPercentage = (wordProgress / words.length) * 100;
+                        return `${basePercentage + additionalPercentage}%`;
+                    })()
+                }}>
+                    {segment.text}
+                </div>
+            </div>
+        );
+    }
+
+    if (behavior.mode === 'cinematic_blocks') {
+        const chars = segment.text.split('');
+        const duration = segment.endMs - segment.startMs;
+        const progress = Math.max(0, Math.min(1, (currentTimeMs - segment.startMs) / duration));
+        const visibleChars = Math.floor(progress * chars.length);
+
+        return (
+            <div style={{ 
+                letterSpacing: '0.1em', 
+                textTransform: 'uppercase',
+                display: 'inline-block',
+                color: template.textColor 
+            }}>
+                {chars.slice(0, visibleChars).join('')}
+            </div>
+        );
+    }
+
     return <div>{segment.text}</div>;
 };
