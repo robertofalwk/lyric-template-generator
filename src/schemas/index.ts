@@ -18,7 +18,8 @@ export const SegmentSchema = z.object({
 export const TimelineSchema = z.object({
     meta: z.object({
         version: z.string(),
-        generatedAt: z.string().datetime(),
+        generatedAt: z.string().datetime().optional(),
+        engine: z.string().optional(),
     }).optional(),
     segments: z.array(SegmentSchema),
 });
@@ -124,8 +125,11 @@ export const ProjectSceneSchema = z.object({
     sectionType: z.enum(['intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'outro', 'custom']).default('verse'),
     templateId: z.string().optional(),
     backgroundAssetId: z.string().optional(),
+    packId: z.string().optional(),
     intensity: z.enum(['low', 'medium', 'high']).default('medium'),
     transitionIn: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
+    transitionOut: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
+    settings: z.record(z.any()).default({}),
     visualScore: z.number().optional(),
     createdAt: z.string().datetime(),
 });
@@ -194,7 +198,7 @@ export const ProjectSchema = z.object({
     aspectRatio: z.enum(['9:16', '16:9']),
     
     // Status & Operations
-    status: z.enum(['draft', 'processing', 'review', 'approved', 'rendering', 'completed', 'published']).default('draft'),
+    status: z.enum(['draft', 'processing', 'ready', 'review', 'approved', 'rendering', 'completed', 'published', 'failed']).default('draft'),
     renderStatus: z.enum(['none', 'processing', 'completed', 'failed']).default('none'),
     
     // Configuration & Exports

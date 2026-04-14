@@ -47,11 +47,20 @@ export class JobRepository {
         return rows.map(this.mapRowToJob);
     }
 
-    async findNextQueued(): Promise<RenderJob | null> {
-        const stmt = db.prepare("SELECT * FROM render_jobs WHERE status = 'queued' LIMIT 1");
-        const row = stmt.get() as any;
+    async claimNextQueued(): Promise<RenderJob | null> {
+        const row = db.transaction(() => {
+            const next = db.prepare("SELECT * FROM render_jobs WHERE status = 'queued' LIMIT 1").get() as any;
+            if (!next) return null;
+            
+            db.prepare("UPDATE render_jobs SET status = 'processing', startedAt = ? WHERE id = ?")
+              .run(new Date().toISOString(), next.id);
+            
+            return next;
+        })();
+
         if (!row) return null;
-        return this.mapRowToJob(row);
+        // The object returned from transaction still has status = 'queued' from the select
+        return this.mapRowToJob({ ...row, status: 'processing' });
     }
 
     private mapRowToJob(row: any): RenderJob {

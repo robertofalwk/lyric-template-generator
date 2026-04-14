@@ -10,31 +10,30 @@ async function processQueue() {
     while (true) {
         let currentJob = null;
         try {
-            currentJob = await jobRepository.findNextQueued();
+            currentJob = await jobRepository.claimNextQueued();
 
             if (currentJob) {
-                console.log(`[Job ${currentJob.id}] Picking up ${currentJob.type} job...`);
+                console.log(`[Job ${currentJob.id}] Claimed ${currentJob.type} job...`);
                 
-                // Mark as processing
-                currentJob.status = 'processing';
-                currentJob.startedAt = new Date().toISOString();
-                currentJob.logs = [...currentJob.logs, `Started processing ${currentJob.type} at ${currentJob.startedAt}`];
+                // StartedAt is already set by claimNextQueued, but we update logs
+                currentJob.logs = [...currentJob.logs, `Claimed and started processing ${currentJob.type} at ${new Date().toISOString()}`];
                 await jobRepository.save(currentJob);
 
                 const project = await projectRepository.findById(currentJob.projectId);
                 if (!project) throw new Error('Project not found');
 
                 if (currentJob.type === 'alignment') {
+                    if (!project.audioOriginalPath) throw new Error('Original audio path missing');
+
                     const timelinePath = path.join(process.cwd(), 'storage', 'projects', project.id, 'timeline.json');
                     
                     const timeline = await alignmentService.align(
                         project.audioOriginalPath,
-                        project.lyricsRaw,
-                        project.settings,
+                        project.lyricsRaw || '',
+                        project.settings as any,
                         timelinePath,
                         (log) => {
-                            // Optional: Update logs every few seconds or per segment
-                            // For SQLite local, we'll keep it simple
+                            // Progress logs
                         }
                     );
 
@@ -54,7 +53,7 @@ async function processQueue() {
                     });
 
                 } else if (currentJob.type === 'render') {
-                    const customTemplate = currentJob.payload?.customTemplate;
+                    const customTemplate = currentJob.payload?.customTemplate as any;
                     const outputPath = await renderingService.render(project, currentJob.id, customTemplate, async (progress, log) => {
                         if (currentJob) {
                             // Update progress periodically

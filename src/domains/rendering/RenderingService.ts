@@ -25,12 +25,14 @@ export class RenderingService {
         // 2. Fetch Scenes
         const scenes = await projectSceneRepository.findByProjectId(project.id);
         
+        const host = process.env.APP_URL || 'http://localhost:3000';
+
         // 3. Resolve Scene Manifest with high-fidelity asset resolution
         const sceneManifest = await Promise.all(scenes.map(async s => {
             let assetUrl = null;
             if (s.backgroundAssetId) {
                 const asset = await backgroundAssetRepository.findById(s.backgroundAssetId);
-                assetUrl = asset ? `http://localhost:3000${asset.publicPath}` : null;
+                assetUrl = asset ? `${host}${asset.publicPath}` : null;
             }
             
             let sceneTemplate = null;
@@ -51,7 +53,8 @@ export class RenderingService {
         onProgress(20, 'Mastering High-Fidelity Signal...');
 
         try {
-            const audioSrc = `http://localhost:3000/api/projects/${project.id}/audio`;
+            const host = process.env.APP_URL || 'http://localhost:3000';
+            const audioSrc = `${host}/api/projects/${project.id}/audio`;
 
             await renderMedia({
                 composition: {

@@ -4,7 +4,7 @@ import path from 'path';
 const dbPath = path.join(process.cwd(), 'storage', 'database.sqlite');
 const db = new Database(dbPath);
 
-// Create tables
+// Atomic Table definitions - ensured consistency with init-db.ts
 db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
         id TEXT PRIMARY KEY,
@@ -20,13 +20,13 @@ db.exec(`
         selectedPackId TEXT,
         lastVisualScore INTEGER,
         aspectRatio TEXT,
-        status TEXT DEFAULT 'draft', -- draft, review, approved, rendering, completed, published
-        alignmentStatus TEXT,
-        renderStatus TEXT,
+        status TEXT DEFAULT 'draft',
+        alignmentStatus TEXT DEFAULT 'none',
+        renderStatus TEXT DEFAULT 'none',
         exportFormats TEXT,
-        settings TEXT, -- JSON
+        settings TEXT, 
         latestTimelinePath TEXT,
-        timeline TEXT, -- JSON
+        timeline TEXT, 
         errorMessage TEXT
     );
 
@@ -41,7 +41,7 @@ db.exec(`
         backgroundAssetId TEXT,
         packId TEXT,
         intensity TEXT DEFAULT 'medium',
-        settings TEXT, -- JSON
+        settings TEXT, 
         transitionIn TEXT DEFAULT 'fade',
         transitionOut TEXT DEFAULT 'fade',
         visualScore INTEGER,
@@ -49,41 +49,16 @@ db.exec(`
         FOREIGN KEY(projectId) REFERENCES projects(id)
     );
 
-    -- V6 Operations: Comments
     CREATE TABLE IF NOT EXISTS project_comments (
         id TEXT PRIMARY KEY,
         projectId TEXT NOT NULL,
         sceneId TEXT,
         timestampMs INTEGER,
         message TEXT NOT NULL,
-        type TEXT DEFAULT 'note', -- note, issue, approval, warning
-        status TEXT DEFAULT 'open', -- open, resolved
+        type TEXT DEFAULT 'note',
+        status TEXT DEFAULT 'open',
         createdAt TEXT NOT NULL,
         resolvedAt TEXT,
-        FOREIGN KEY(projectId) REFERENCES projects(id)
-    );
-
-    -- V6 Operations: Render History & Snapshots
-    CREATE TABLE IF NOT EXISTS render_history (
-        id TEXT PRIMARY KEY,
-        projectId TEXT NOT NULL,
-        jobId TEXT,
-        presetId TEXT,
-        snapshot TEXT NOT NULL, -- JSON (Frozen Template + Scenes + Assets)
-        outputPath TEXT,
-        posterPath TEXT,
-        status TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY(projectId) REFERENCES projects(id)
-    );
-
-    -- V6 Operations: Event Timeline
-    CREATE TABLE IF NOT EXISTS project_events (
-        id TEXT PRIMARY KEY,
-        projectId TEXT NOT NULL,
-        type TEXT NOT NULL, -- created, aligned, scene_added, approved, rendered, published
-        payload TEXT, -- JSON
-        createdAt TEXT NOT NULL,
         FOREIGN KEY(projectId) REFERENCES projects(id)
     );
 
@@ -103,16 +78,6 @@ db.exec(`
         createdAt TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS style_packs (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        config TEXT, -- JSON
-        category TEXT,
-        isPublic INTEGER DEFAULT 0,
-        createdAt TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS templates (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -122,17 +87,6 @@ db.exec(`
         isFavorite INTEGER DEFAULT 0,
         baseTemplateId TEXT,
         createdAt TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS template_versions (
-        id TEXT PRIMARY KEY,
-        templateId TEXT NOT NULL,
-        version INTEGER NOT NULL,
-        prompt TEXT,
-        data TEXT, -- JSON
-        parentVersionId TEXT,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY(templateId) REFERENCES templates(id)
     );
 
     CREATE TABLE IF NOT EXISTS render_jobs (
@@ -156,10 +110,5 @@ db.exec(`
         value TEXT NOT NULL
     );
 `);
-
-// Migration scripts for V6
-try { db.exec(`CREATE TABLE IF NOT EXISTS project_comments (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, message TEXT NOT NULL, createdAt TEXT NOT NULL);`); } catch(e){}
-try { db.exec(`CREATE TABLE IF NOT EXISTS render_history (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, snapshot TEXT NOT NULL, createdAt TEXT NOT NULL);`); } catch(e){}
-try { db.exec(`CREATE TABLE IF NOT EXISTS project_events (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, type TEXT NOT NULL, createdAt TEXT NOT NULL);`); } catch(e){}
 
 export default db;

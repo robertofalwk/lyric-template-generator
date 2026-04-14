@@ -26,7 +26,7 @@ export class ProjectSceneRepository {
             scene.transitionIn,
             scene.transitionOut,
             scene.visualScore || null,
-            JSON.stringify(scene.settings),
+            JSON.stringify(scene.settings || {}),
             scene.createdAt
         );
     }
@@ -42,7 +42,7 @@ export class ProjectSceneRepository {
     private mapRow(row: any): ProjectScene {
         return ProjectSceneSchema.parse({
             ...row,
-            settings: JSON.parse(row.settings),
+            settings: row.settings ? JSON.parse(row.settings) : {},
         });
     }
 }

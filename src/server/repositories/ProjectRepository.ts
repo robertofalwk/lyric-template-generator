@@ -21,10 +21,11 @@ export class ProjectRepository {
             INSERT OR REPLACE INTO projects (
                 id, title, createdAt, updatedAt, audioOriginalPath, 
                 audioProcessedPath, lyricsRaw, lyricsNormalized, 
-                selectedTemplateId, aspectRatio, status, 
+                selectedTemplateId, selectedBackgroundAssetId, selectedPackId,
+                lastVisualScore, aspectRatio, status, 
                 alignmentStatus, renderStatus, exportFormats, 
                 settings, latestTimelinePath, timeline, errorMessage
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -37,6 +38,9 @@ export class ProjectRepository {
             validated.lyricsRaw,
             validated.lyricsNormalized || null,
             validated.selectedTemplateId,
+            validated.selectedBackgroundAssetId || null,
+            validated.selectedPackId || null,
+            validated.lastVisualScore || null,
             validated.aspectRatio,
             validated.status,
             validated.alignmentStatus,
