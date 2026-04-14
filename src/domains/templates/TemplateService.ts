@@ -33,10 +33,16 @@ export class TemplateService {
      * Lists all available templates, merging registry and db.
      */
     static async listAllMerged(): Promise<Template[]> {
-        const custom = await templateRepository.findAll();
         const registry = TEMPLATES_REGISTRY.map(t => TemplateSchema.parse(t));
-        
-        // Use a map to ensure IDs don't overlap (though they shouldn't)
+        let custom: Template[] = [];
+
+        try {
+            custom = await templateRepository.findAll();
+        } catch (err) {
+            console.error('[TemplateService] Failed to list custom templates, using stock fallback:', err);
+        }
+
+        // Custom templates override same ID from stock.
         const all = new Map<string, Template>();
         registry.forEach(t => all.set(t.id, t));
         custom.forEach(t => all.set(t.id, t));
