@@ -34,44 +34,44 @@ export class VisualDirectorService {
     static async direct(project: Project, timeline: Timeline): Promise<ProjectScene[]> {
         const provider = TemplateAIProviderFactory.getProvider();
         
-        try {
-            const aiManifest = await provider.directVisuals(project, timeline);
-            if (aiManifest && aiManifest.scene_manifest && aiManifest.scene_manifest.length > 0) {
-                // Fetch assets for fallback mapping
-                const availableAssets = await backgroundAssetRepository.findAll();
+        const aiManifest = await provider.directVisuals(project, timeline);
+        if (aiManifest && aiManifest.scene_manifest && aiManifest.scene_manifest.length > 0) {
+            // Fetch assets for fallback mapping
+            const availableAssets = await backgroundAssetRepository.findAll();
 
-                return aiManifest.scene_manifest.map((s: any, idx: number) => {
-                    const art = aiManifest.art_allocation?.find((a: any) => a.sceneId === s.id);
-                    
-                    // Basic heuristic: try to pick an asset (round robin) if any exist
-                    const assetId = availableAssets.length > 0 
-                        ? availableAssets[idx % availableAssets.length].id 
-                        : undefined;
+            return aiManifest.scene_manifest.map((s: any, idx: number) => {
+                const art = aiManifest.art_allocation?.find((a: any) => a.sceneId === s.id);
+                
+                // Basic heuristic: try to pick an asset (round robin) if any exist
+                const assetId = availableAssets.length > 0 
+                    ? availableAssets[idx % availableAssets.length].id 
+                    : undefined;
 
-                    return {
-                        id: uuid(),
-                        projectId: project.id,
-                        name: s.name,
-                        startMs: s.startMs,
-                        endMs: s.endMs,
-                        sectionType: s.sectionType || 'verse',
-                        templateId: aiManifest.super_template?.baseTemplateId || 'kinetic-neon',
-                        backgroundAssetId: assetId,
-                        intensity: art?.visualIntensity || s.energy || 'medium',
-                        transitionIn: 'fade',
-                        transitionOut: 'fade',
-                        settings: {
-                            prompt: art?.prompt,
-                            visual_intent: aiManifest.visual_intent
-                        },
-                        createdAt: new Date().toISOString()
-                    };
-                });
-            }
-        } catch (error) {
-            console.error('AI Director fallback to heuristics:', error);
+                return {
+                    id: uuid(),
+                    projectId: project.id,
+                    name: s.name,
+                    startMs: s.startMs,
+                    endMs: s.endMs,
+                    sectionType: s.sectionType || 'verse',
+                    templateId: aiManifest.super_template?.baseTemplateId || 'kinetic-neon',
+                    backgroundAssetId: assetId,
+                    intensity: art?.visualIntensity || s.energy || 'medium',
+                    transitionIn: 'fade',
+                    transitionOut: 'fade',
+                    settings: {
+                        prompt: art?.prompt,
+                        visual_intent: aiManifest.visual_intent
+                    },
+                    createdAt: new Date().toISOString()
+                };
+            });
         }
 
+        // If provider returned null and it's not OpenAI, we proceed to heuristics.
+        // If it's OpenAI and it didn't throw but returned null (not expected), we'll do heuristics.
+        // But if it THREW, it will bubble up and the API will return 500.
+        
         // --- FALLBACK HEURISTIC ---
         const scenes: ProjectScene[] = [];
         const segments = timeline.segments;

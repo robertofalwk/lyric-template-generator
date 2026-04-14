@@ -59,7 +59,11 @@ export default function Dashboard() {
     const testAI = async () => {
         setTestResult(null);
         try {
-            const res = await fetch('/api/settings/test-studio-ai', { method: 'POST' });
+            const res = await fetch('/api/settings/test-studio-ai', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appSettings)
+            });
             const data = await res.json();
             setTestResult(data);
         } catch (error: any) {

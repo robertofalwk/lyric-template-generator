@@ -128,6 +128,10 @@ db.exec(`
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
     );
+
+    -- Seed Defaults
+    INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_provider', 'local');
+    INSERT OR IGNORE INTO system_settings (key, value) VALUES ('openai_model', 'gpt-4o-mini');
 `);
 
 console.log('✔ Studio Node Initialized at:', DB_PATH);

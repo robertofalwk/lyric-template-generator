@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TemplateAIProviderFactory } from '@/src/domains/template-ai/providers/TemplateAIProviderFactory';
 
-export async function POST() {
+import { OpenAIProvider } from '@/src/domains/template-ai/providers/OpenAIProvider';
+
+export async function POST(req: NextRequest) {
     try {
-        const provider = TemplateAIProviderFactory.getProvider();
+        const body = await req.json().catch(() => ({}));
+        let provider;
         
-        // Use generateIntent which is a pure signal test, NOT refineTemplate (which validates full Template schema)
-        // This avoids "expected string at id" errors during a simple connection test.
+        if (body.ai_provider === 'openai' && body.openai_api_key) {
+            provider = new OpenAIProvider({ 
+                apiKey: body.openai_api_key, 
+                model: body.openai_model 
+            });
+        } else {
+            provider = TemplateAIProviderFactory.getProvider();
+        }
+        
+        // Use generateIntent which is a pure signal test
         const signal = await provider.generateIntent('Studio Connection Test. Ping.');
 
         return NextResponse.json({ 

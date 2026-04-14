@@ -12,17 +12,20 @@ export async function POST(req: NextRequest) {
         try {
             const variants = await provider.generateVariants(prompt);
             return NextResponse.json(variants);
-        } catch (providerError) {
-            console.error(`[TemplateAI] Provider ${provider.name} failed, falling back to local:`, providerError);
+        } catch (providerError: any) {
+            console.error(`[TemplateAI] Provider ${provider.name} failed:`, providerError);
             
-            // Explicit fallback to local if external fails
-            const { LocalHeuristicProvider } = await import('@/src/domains/template-ai/providers/LocalHeuristicProvider');
-            const fallback = new LocalHeuristicProvider();
-            const variants = await fallback.generateVariants(prompt);
-            
-            return NextResponse.json(variants, { 
-                headers: { 'X-TemplateAI-Fallback': 'true' } 
-            });
+            // Only fallback if we are already in local mode, or if we want to explicitly allow it but with a header.
+            // But to "remove silent fallback", we should probably error out if it was supposed to be OpenAI.
+            if (provider.name === 'local-heuristics') {
+                throw providerError; // Should not happen if it's local heuristics, but for safety
+            }
+
+            // Return the error so UI can show it
+            return NextResponse.json({ 
+                error: `Provider ${provider.name} failed: ${providerError.message}`,
+                provider: provider.name
+            }, { status: 502 });
         }
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

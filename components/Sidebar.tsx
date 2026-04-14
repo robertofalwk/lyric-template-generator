@@ -56,6 +56,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (tab === 'library') fetchTemplates();
         if (tab === 'review' && currentProject) fetchComments();
         if (tab === 'publish' && currentProject) fetchJobs();
+
+        let poll: NodeJS.Timeout | null = null;
+        if (tab === 'publish' && currentProject) {
+            poll = setInterval(fetchJobs, 3000);
+        }
+
+        return () => { if (poll) clearInterval(poll); };
     }, [tab, currentProject?.id]);
 
     const fetchAssets = async () => {
@@ -102,13 +109,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: aiPrompt })
             });
+
             const data = await res.json();
-            // In a real flow, we might want to store these variations or just show them
-            // For now, let's just use the first one if we want automated flow, but here we show them.
+
+            if (!res.ok) {
+                setAiStatus('fallback');
+                alert(`AI Signal Interruption: ${data.error || 'Unknown Error'}`);
+                return;
+            }
+
             setAiStatus(res.headers.get('X-TemplateAI-Fallback') ? 'fallback' : 'idle');
-            // We'll set a local state for variations to display
             (window as any).__LAST_VARIANTS__ = data;
-        } catch (error) { setAiStatus('fallback'); } finally { setIsGenerating(false); }
+        } catch (error: any) { 
+            setAiStatus('fallback');
+            alert(`Network Signal Failure: ${error.message}`);
+        } finally { 
+            setIsGenerating(false); 
+        }
     };
 
     const handleAIRefine = async () => {
@@ -214,6 +231,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onProjectUpdate(await res.json());
         } catch (e) {}
     };
+    
+    const handleStartRender = async () => {
+        if (!currentProject || !currentTemplate) return;
+        setIsGenerating(true); // Reusing loader state
+        try {
+            const res = await fetch(`/api/projects/${currentProject.id}/export`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    presetId: 'v7_premium_master',
+                    formats: ['mp4_h264'],
+                    customTemplate: currentTemplate 
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Render failure');
+            }
+            fetchJobs();
+            setTab('publish');
+        } catch (e: any) {
+            alert(`Render Request Blocked: ${e.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     return (
         <aside className="w-[440px] border-r border-white/5 bg-zinc-950 flex flex-col h-full shrink-0 relative overflow-hidden">
@@ -229,7 +272,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         if (!hasProject && t !== 'monitor') isLocked = true;
                         if (hasProject) {
                             // Director is now unlocked early for strategy planning
-                            if (['review', 'publish'].includes(t) && !hasTimeline) isLocked = true;
+                            if (t === 'review' && !hasTimeline) isLocked = true;
+                            if (t === 'publish' && currentProject?.status !== 'approved') isLocked = true;
                         }
 
                         return (
@@ -528,20 +572,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {tab === 'publish' && (
                     <div className="flex flex-col gap-10 animate-in fade-in duration-500">
+                        <section className="p-8 rounded-[2rem] bg-emerald-500/5 border border-emerald-500/10 shadow-2xl">
+                             <div className="flex items-center justify-between mb-8">
+                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-600">Master Render Console</label>
+                                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full text-[8px] font-black text-emerald-500 uppercase tracking-widest">
+                                    <Activity size={10} className="animate-pulse"/> Signal OK
+                                </div>
+                             </div>
+                             <button 
+                                onClick={handleStartRender}
+                                disabled={isGenerating}
+                                className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-[0.4em] rounded-2xl shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3"
+                             >
+                                {isGenerating ? <Loader2 className="animate-spin" size={16}/> : <><Film size={16}/> Start Studio Render</>}
+                             </button>
+                             <p className="mt-4 text-[8px] text-zinc-600 font-bold uppercase tracking-widest text-center italic">Advanced V7 Kinematics & Post-Processing Engaged</p>
+                        </section>
+
                         <section className="flex flex-col gap-6">
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Live Studio Exports</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">Live Studio Exports Archive</label>
                             <div className="grid grid-cols-1 gap-4">
                                 {jobs.length === 0 && <p className="text-[9px] text-zinc-800 uppercase tracking-widest font-black text-center py-10">No renders detected</p>}
                                 {jobs.map(j => (
-                                    <div key={j.id} className="p-6 rounded-3xl bg-zinc-900 border border-white/5 flex items-center justify-between group hover:border-emerald-500/20 transition-all">
-                                        <div className="flex flex-col">
-                                            <span className="text-[11px] font-bold text-zinc-300 capitalize">{j.type} Render</span>
-                                            <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{new Date(j.createdAt).toLocaleString()} • {j.status}</span>
+                                    <div key={j.id} className="p-6 rounded-3xl bg-zinc-900 border border-white/5 flex flex-col gap-4 group hover:border-emerald-500/20 transition-all">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-bold text-zinc-300 capitalize">{j.type} Render</span>
+                                                <span className="text-[8px] text-zinc-700 font-black uppercase tracking-widest">{new Date(j.createdAt).toLocaleString()} • {j.status}</span>
+                                            </div>
+                                            {j.status === 'completed' ? (
+                                                <a href={j.outputPath} download className="p-3 bg-zinc-950 text-emerald-500 rounded-xl shadow-lg hover:scale-110 transition-all"><Download size={18}/></a>
+                                            ) : (
+                                                <div className="p-3 text-zinc-700 animate-pulse"><Film size={18}/></div>
+                                            )}
                                         </div>
-                                        {j.status === 'completed' ? (
-                                            <a href={j.outputPath} download className="p-3 bg-zinc-950 text-zinc-500 group-hover:text-emerald-500 transition-all"><Download size={18}/></a>
-                                        ) : (
-                                            <div className="p-3 text-zinc-700 animate-pulse"><Film size={18}/></div>
+                                        
+                                        {(j.status === 'processing' || j.status === 'queued') && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center text-[7px] font-black uppercase tracking-widest text-zinc-600">
+                                                    <span>Signal Processing</span>
+                                                    <span>{j.progress}%</span>
+                                                </div>
+                                                <div className="w-full h-1 bg-black rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-emerald-500 transition-all duration-500" 
+                                                        style={{ width: `${j.progress}%` }}
+                                                    />
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 ))}
