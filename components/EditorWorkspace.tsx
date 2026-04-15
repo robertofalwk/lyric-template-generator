@@ -5,7 +5,7 @@ import { Project, Timeline, Template, ProjectScene } from '@/src/schemas';
 import { TimelineEditor } from './TimelineEditor';
 import { 
     Paintbrush, AlignLeft, Layers, Sliders, ChevronDown, 
-    Download, Play, FastForward, Film, Type, Star
+    Download, Play, FastForward, Film, Type, Star, Sparkles, Image as ImageIcon
 } from 'lucide-react';
 
 interface EditorWorkspaceProps {
@@ -23,7 +23,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
     project, timeline, scenes, template, 
     onProjectUpdate, onTimelineUpdate, onTemplateUpdate, onScenesUpdate
 }) => {
-    const [subTab, setSubTab] = useState<'style' | 'lyrics' | 'scenes'>('style');
+    const [subTab, setSubTab] = useState<'style' | 'lyrics' | 'scenes' | 'assets' | 'ai'>('style');
+
 
     const handleSrtExport = () => {
         let srtContent = '';
@@ -54,7 +55,9 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
                     {[
                         { id: 'style', icon: Paintbrush, label: 'Style Lab' },
                         { id: 'lyrics', icon: AlignLeft, label: 'Lyrics Engine' },
-                        { id: 'scenes', icon: Layers, label: 'Scene Director' }
+                        { id: 'scenes', icon: Layers, label: 'Scene Director' },
+                        { id: 'assets', icon: ImageIcon, label: 'Asset Hub' },
+                        { id: 'ai', icon: Sparkles, label: 'AI Workspace' }
                     ].map(st => (
                         <button 
                             key={st.id}
@@ -263,6 +266,72 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </section>
+                    </div>
+                )}
+                {/* --- SPRINT 6: ASSET HUB --- */}
+                {subTab === 'assets' && (
+                    <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-left duration-500">
+                        <section className="flex flex-col gap-6">
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 flex items-center gap-2">
+                                <ImageIcon size={14}/> Background Art Providers
+                            </label>
+                            <div className="flex gap-4 border-b border-white/5 pb-4">
+                                {['My Assets', 'Pexels', 'Unsplash', 'Pixabay'].map(prov => (
+                                    <button 
+                                        key={prov}
+                                        className="px-4 py-2 bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        {prov}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {/* Placeholder Assets */}
+                                {[1,2,3,4].map(a => (
+                                    <div key={a} className="aspect-[9/16] bg-zinc-900 rounded-2xl border border-white/5 overflow-hidden relative group">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-4">
+                                            <span className="text-[8px] text-white font-black uppercase tracking-widest">Asset #{a}</span>
+                                        </div>
+                                        <div className="absolute inset-0 bg-purple-500/20 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                                            <button className="px-4 py-2 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl">Apply</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+                )}
+
+                {/* --- SPRINT 9: AI DIRECTOR WORKSPACE --- */}
+                {subTab === 'ai' && (
+                    <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-left duration-500">
+                        <section className="flex flex-col gap-6">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 flex items-center gap-2">
+                                    <Sparkles size={14}/> AI Director Audit
+                                </label>
+                                <span className="px-3 py-1 bg-purple-500/10 text-purple-400 text-[9px] font-black uppercase tracking-widest rounded-lg">
+                                    Provider: Local Heuristic
+                                </span>
+                            </div>
+                            <div className="p-6 bg-zinc-900 border border-white/5 rounded-3xl flex flex-col gap-4">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">JSON Output Log</span>
+                                <pre className="p-4 bg-black/50 border border-white/5 rounded-xl text-[10px] text-emerald-400 font-mono overflow-auto max-h-64">
+                                    {JSON.stringify({ 
+                                        visual_intent: template.textBehavior,
+                                        scene_manifest: scenes.map(s => ({ id: s.id, type: s.sectionType, intensity: s.intensity })) 
+                                    }, null, 2)}
+                                </pre>
+                            </div>
+                            <div className="flex gap-4">
+                                <button className="flex-1 py-3 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20">
+                                    Regenerate Visual Intent
+                                </button>
+                                <button className="flex-1 py-3 bg-zinc-800 text-zinc-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-700 hover:text-white transition-all border border-white/5">
+                                    Force Local Fallback
+                                </button>
                             </div>
                         </section>
                     </div>

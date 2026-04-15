@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
-    const [view, setView] = useState<'hub' | 'preview' | 'editor' | 'settings'>('hub');
+    const [view, setView] = useState<'hub' | 'preview' | 'settings' | 'editor' | 'renders'>('hub');
     const [project, setProject] = useState<Project | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
     const [timeline, setTimeline] = useState<Timeline | null>(null);
@@ -359,6 +359,7 @@ export default function Dashboard() {
                                 { id: 'hub', icon: LayoutGrid, label: 'Hub' },
                                 { id: 'preview', icon: PlayCircle, label: 'Monitor' },
                                 { id: 'editor', icon: SlidersHorizontal, label: 'Editor' },
+                                { id: 'renders', icon: Box, label: 'Render Center' },
                                 { id: 'settings', icon: Settings, label: 'Settings' }
                             ].map(nav => (
                                 <button 
@@ -456,7 +457,17 @@ export default function Dashboard() {
                             <div className="flex-1 overflow-y-auto animate-in fade-in zoom-in-95 duration-500 custom-scrollbar pr-4">
                                 <div className="flex flex-col gap-12">
                                     <div className="flex flex-col gap-3">
-                                        <h2 className="text-3xl font-black tracking-tighter">Production Archive</h2>
+                                        <div className="flex justify-between items-center">
+                                            <h2 className="text-3xl font-black tracking-tighter">Production Archive</h2>
+                                            <div className="flex gap-2">
+                                                <button className="px-4 py-2 bg-zinc-900 border border-white/10 hover:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white rounded-xl transition-all">
+                                                    Batch Render
+                                                </button>
+                                                <button className="px-4 py-2 bg-purple-600/20 border border-purple-500/50 text-purple-400 hover:bg-purple-600 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+                                                    Marketplace
+                                                </button>
+                                            </div>
+                                        </div>
                                         <p className="text-[12px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{projects.length} Active Workspace Nodes</p>
                                     </div>
                                     
@@ -477,10 +488,18 @@ export default function Dashboard() {
                                                     <h3 className="text-xl font-bold tracking-tight text-white">{p.title}</h3>
                                                     <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">{new Date(p.createdAt).toLocaleDateString()}</p>
                                                 </div>
-                                                <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-zinc-700 pt-4 border-t border-white/5">
-                                                    <span>AspectRatio {p.aspectRatio}</span>
-                                                    <span>•</span>
-                                                    <span>Score {p.lastVisualScore}%</span>
+                                                <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-zinc-700 pt-4 border-t border-white/5 justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>AR {p.aspectRatio}</span>
+                                                        <span>•</span>
+                                                        <span>Score {p.lastVisualScore || 0}%</span>
+                                                    </div>
+                                                    <button 
+                                                        className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-md text-[8px]"
+                                                        onClick={(e) => { e.stopPropagation(); alert('Duplicate project triggered') }}
+                                                    >
+                                                        Clone
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -582,6 +601,50 @@ export default function Dashboard() {
                             </div>
                         )}
 
+                        {view === 'renders' && (
+                            <div className="flex-1 overflow-y-auto animate-in slide-in-from-right duration-500 max-w-5xl mx-auto w-full py-10">
+                                <div className="flex flex-col gap-10">
+                                    <h2 className="text-2xl font-black tracking-tighter flex items-center gap-2">
+                                        <Box className="text-emerald-500" /> Render Center
+                                    </h2>
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {['Shorts (9:16)', 'Reels (9:16)', 'Landscape (16:9)', 'Square (1:1)'].map(prof => (
+                                            <div key={prof} className="p-6 bg-zinc-900 border border-white/5 rounded-3xl flex flex-col gap-2">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{prof}</span>
+                                                <span className="text-xl font-black text-white">Profile</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="p-8 bg-zinc-900/50 border border-white/5 rounded-3xl">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-600 block mb-6">Job History & Render Queue</label>
+                                        <div className="space-y-4">
+                                            {latestRenderJob ? (
+                                                <div className="flex items-center justify-between p-4 bg-black/40 border border-emerald-500/20 rounded-xl">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                                                            <CheckCircle2 size={16}/>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[12px] font-bold text-white">Export Success</span>
+                                                            <span className="text-[10px] text-zinc-500">{latestRenderJob.id}</span>
+                                                        </div>
+                                                    </div>
+                                                    <a 
+                                                        href={`/api/jobs/${latestRenderJob.id}/download`} 
+                                                        download
+                                                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                                                    >
+                                                        Download Artifact
+                                                    </a>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-zinc-500 text-center py-10">No recent renders found in the current workspace node.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {view === 'settings' && (
                              <div className="flex-1 overflow-y-auto animate-in slide-in-from-right duration-500 max-w-4xl mx-auto w-full">
