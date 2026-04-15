@@ -46,10 +46,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     useEffect(() => {
         if (currentProject) {
-            setTitle(currentProject.title);
+            setTitle(currentProject.title || '');
             setLyrics(currentProject.lyricsRaw || '');
         }
-    }, [currentProject?.id]);
+    }, [currentProject?.id, currentProject?.title, currentProject?.lyricsRaw]);
 
     useEffect(() => {
         if (tab === 'assets') fetchAssets();
@@ -177,7 +177,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ selectedBackgroundAssetId: asset.id })
             });
-            onProjectUpdate(await res.json());
+            if (res.ok) {
+                const updated = await res.json();
+                if (updated && !updated.error) onProjectUpdate(updated);
+            }
         } catch (e) {}
     };
 
@@ -216,7 +219,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'approved' })
             });
-            onProjectUpdate(await res.json());
+            if (res.ok) {
+                const updated = await res.json();
+                if (updated && !updated.error) onProjectUpdate(updated);
+            }
         } catch (e) {}
     };
 
@@ -226,9 +232,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const res = await fetch(`/api/projects/${currentProject.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, lyricsRaw: lyrics })
+                body: JSON.stringify({ title: title || '', lyricsRaw: lyrics || '' })
             });
-            onProjectUpdate(await res.json());
+            if (res.ok) {
+                const updated = await res.json();
+                if (updated && !updated.error) onProjectUpdate(updated);
+            }
         } catch (e) {}
     };
     

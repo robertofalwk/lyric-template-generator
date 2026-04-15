@@ -134,7 +134,9 @@ export default function Dashboard() {
         setStatusMsg('Hydrating Studio Workspace...');
         try {
             const res = await fetch(`/api/projects/${id}`);
+            if (!res.ok) throw new Error('Failed to load project');
             const data = await res.json();
+            if (!data || data.error) throw new Error('Invalid project payload');
             setProject(data);
             if (data.timeline) setTimeline(data.timeline);
             
@@ -188,7 +190,9 @@ export default function Dashboard() {
             
             // Sync project state
             const syncRes = await fetch(`/api/projects/${id}`);
-            setProject(await syncRes.json());
+            if (!syncRes.ok) throw new Error('Failed to sync project');
+            const syncData = await syncRes.json();
+            if (syncData && !syncData.error) setProject(syncData);
         } catch (error: any) {
             alert(`Alignment Error: ${error.message}`);
         } finally {
@@ -229,7 +233,10 @@ export default function Dashboard() {
             
             // Re-sync project state immediately
             const syncRes = await fetch(`/api/projects/${updated.id}`);
-            setProject(await syncRes.json());
+            if (syncRes.ok) {
+                const syncData = await syncRes.json();
+                if (syncData && !syncData.error) setProject(syncData);
+            }
             
         } catch (error: any) {
             alert(`Signal Failure: ${error.message}`);
@@ -247,7 +254,10 @@ export default function Dashboard() {
             if (!res.ok) throw new Error('AI Direction failed');
             
             const syncRes = await fetch(`/api/projects/${project.id}`);
-            setProject(await syncRes.json());
+            if (syncRes.ok) {
+                const syncData = await syncRes.json();
+                if (syncData && !syncData.error) setProject(syncData);
+            }
             alert('Studio Pro: Visual sequence mastered and scenes orchestrated.');
         } catch (error: any) {
             alert(`Director Error: ${error.message}`);
@@ -583,7 +593,13 @@ export default function Dashboard() {
                                     onProjectUpdate={async (updates) => {
                                         const newProj = { ...project, ...updates };
                                         setProject(newProj);
-                                        await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify(updates), headers: {'Content-Type': 'application/json'} });
+                                        const res = await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify(updates), headers: {'Content-Type': 'application/json'} });
+                                        if (res.ok) {
+                                            const savedData = await res.json();
+                                            if (savedData && !savedData.error) setProject(savedData);
+                                        } else {
+                                            alert('Settings update failed.');
+                                        }
                                     }}
                                     onTimelineUpdate={async (newTimeline) => {
                                         setTimeline(newTimeline);
