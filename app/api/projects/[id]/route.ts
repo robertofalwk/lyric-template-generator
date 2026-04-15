@@ -49,10 +49,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
         const body = await req.json();
-        // @ts-ignore
         const updated = { ...project, ...body, updatedAt: new Date().toISOString() };
-        await projectRepository.save(updated);
-        return NextResponse.json(updated);
+        await projectRepository.save(updated as any);
+        
+        // Retornar a mesma estrutura completa e higienizada do GET
+        return GET(req, { params } as any);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

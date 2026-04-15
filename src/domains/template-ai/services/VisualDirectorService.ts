@@ -32,9 +32,14 @@ export interface VisualDirectionManifest {
 
 export class VisualDirectorService {
     static async direct(project: Project, timeline: Timeline): Promise<ProjectScene[]> {
-        const provider = TemplateAIProviderFactory.getProvider();
+        let aiManifest = null;
+        try {
+            const provider = TemplateAIProviderFactory.getProvider();
+            aiManifest = await provider.directVisuals(project, timeline);
+        } catch (error) {
+            console.error('[VisualDirectorService] AI Provider failed, falling back to heuristic:', error);
+        }
         
-        const aiManifest = await provider.directVisuals(project, timeline);
         if (aiManifest && aiManifest.scene_manifest && aiManifest.scene_manifest.length > 0) {
             // Fetch assets for fallback mapping
             const availableAssets = await backgroundAssetRepository.findAll();
