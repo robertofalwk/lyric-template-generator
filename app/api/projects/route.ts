@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
             alignmentStatus: 'none' as const,
             renderStatus: 'none' as const,
             lyricsRaw: lyrics || null,
+            selectedTemplateId: 'minimal-clean',
             exportFormats: [],
             settings: {},
             scenes: [],

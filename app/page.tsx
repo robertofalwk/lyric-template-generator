@@ -143,28 +143,58 @@ export default function Dashboard() {
         fetchSettings();
     }, []);
 
+    const reconcileTemplate = (t: any): Template => {
+        if (!t) return TEMPLATES_REGISTRY[0] as Template;
+        return {
+            ...TEMPLATES_REGISTRY[0], // Base defaults from a known stock
+            ...t,
+            textBehavior: { ...(TEMPLATES_REGISTRY[0].textBehavior || {}), ...(t.textBehavior || {}) },
+            visualFx: { ...(TEMPLATES_REGISTRY[0].visualFx || {}), ...(t.visualFx || {}) },
+            cameraMotion: { ...(TEMPLATES_REGISTRY[0].cameraMotion || {}), ...(t.cameraMotion || {}) },
+            metadata: { ...(TEMPLATES_REGISTRY[0].metadata || {}), ...(t.metadata || {}) }
+        } as Template;
+    };
+
     const loadProject = async (id: string) => {
         setIsProcessing(true);
         setStatusMsg('Hydrating Studio Workspace...');
         try {
             const res = await fetch(`/api/projects/${id}`);
-            if (!res.ok) throw new Error('Failed to load project');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `HTTP ${res.status}`);
+            }
             const data = await res.json();
-            if (!data || data.error) throw new Error('Invalid project payload');
-            setProject(data);
-            if (data.timeline) setTimeline(data.timeline);
+            if (!data || data.error) throw new Error(data?.error || 'Invalid project payload');
             
+            setProject(data);
+            setTimeline(data.timeline || null);
+            
+            // Reconcile Template
             if (data.selectedTemplateId) {
                 const stock = TEMPLATES_REGISTRY.find(t => t.id === data.selectedTemplateId);
                 if (stock) {
-                    setActiveTemplate(stock);
+                    setActiveTemplate(reconcileTemplate(stock));
                 } else {
                     const tRes = await fetch(`/api/templates/${data.selectedTemplateId}`);
-                    if (tRes.ok) setActiveTemplate(await tRes.json());
+                    if (tRes.ok) {
+                        const tData = await tRes.json();
+                        setActiveTemplate(reconcileTemplate(tData));
+                    } else {
+                        setActiveTemplate(reconcileTemplate(TEMPLATES_REGISTRY[0]));
+                    }
                 }
+            } else {
+                setActiveTemplate(reconcileTemplate(TEMPLATES_REGISTRY[0]));
             }
+            
             setView('preview');
-        } catch (e) { alert('Hydration Error'); } finally { setIsProcessing(false); }
+        } catch (e: any) { 
+            console.error('[HYDRATION_FAILURE]', e);
+            alert(`Operational Failure: ${e.message}`); 
+        } finally { 
+            setIsProcessing(false); 
+        }
     };
 
     const handleCreateProject = async (title: string, lyrics: string) => {

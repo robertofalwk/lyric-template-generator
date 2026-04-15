@@ -8,7 +8,7 @@ export const WordSchema = z.object({
 });
 
 export const SegmentSchema = z.object({
-    id: z.string().uuid(),
+    id: z.string(),
     text: z.string(),
     startMs: z.number().nonnegative(),
     endMs: z.number().nonnegative(),
@@ -18,7 +18,7 @@ export const SegmentSchema = z.object({
 export const TimelineSchema = z.object({
     meta: z.object({
         version: z.string(),
-        generatedAt: z.string().datetime().optional(),
+        generatedAt: z.string().optional(),
         engine: z.string().optional(),
     }).optional(),
     segments: z.array(SegmentSchema),
@@ -38,7 +38,7 @@ export const BackgroundAssetSchema = z.object({
     tags: z.array(z.string()).default([]),
     metadata: z.record(z.string(), z.unknown()).default({}),
     dominantColors: z.array(z.string()).default([]),
-    createdAt: z.string().datetime(),
+    createdAt: z.string(),
 });
 
 // --- SuperTemplate Architecture (V7) ---
@@ -232,7 +232,7 @@ export const ProjectSceneSchema = z.object({
     transitionOut: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
     settings: z.record(z.string(), z.unknown()).default({}),
     visualScore: z.number().optional(),
-    createdAt: z.string().datetime(),
+    createdAt: z.string(),
 });
 
 // --- Project Feedback (V6 Ops) ---
@@ -244,8 +244,8 @@ export const ProjectCommentSchema = z.object({
     message: z.string(),
     type: z.enum(['note', 'issue', 'approval', 'warning']).default('note'),
     status: z.enum(['open', 'resolved']).default('open'),
-    createdAt: z.string().datetime(),
-    resolvedAt: z.string().datetime().optional().nullable(),
+    createdAt: z.string(),
+    resolvedAt: z.string().optional().nullable(),
 });
 
 export const TemplateVariationSchema = z.object({
@@ -281,7 +281,7 @@ export const StylePackSchema = z.object({
     config: z.record(z.string(), z.unknown()),
     category: z.string(),
     isPublic: z.boolean().default(false),
-    createdAt: z.string().datetime(),
+    createdAt: z.string(),
 });
 
 export type StylePack = z.infer<typeof StylePackSchema>;
@@ -295,17 +295,17 @@ export const RenderHistorySchema = z.object({
     outputPath: z.string().optional().nullable(),
     posterPath: z.string().optional().nullable(),
     status: z.enum(['queued', 'processing', 'completed', 'failed']),
-    createdAt: z.string().datetime(),
+    createdAt: z.string(),
 });
 
 export type RenderHistory = z.infer<typeof RenderHistorySchema>;
 
 // --- Project ---
 export const ProjectSchema = z.object({
-    id: z.string().uuid(),
+    id: z.string(),
     title: z.string().min(1),
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
     
     // Asset Paths
     audioOriginalPath: z.string().optional().nullable(),
@@ -352,9 +352,9 @@ export const RenderJobSchema = z.object({
     type: z.enum(['alignment', 'render']),
     status: z.enum(['queued', 'processing', 'completed', 'failed']),
     progress: z.number().min(0).max(100).default(0),
-    createdAt: z.string().datetime(),
-    startedAt: z.string().datetime().optional().nullable(),
-    finishedAt: z.string().datetime().optional().nullable(),
+    createdAt: z.string(),
+    startedAt: z.string().optional().nullable(),
+    finishedAt: z.string().optional().nullable(),
     outputPath: z.string().optional().nullable(),
     logs: z.array(z.string()).default([]),
     payload: z.record(z.string(), z.unknown()).optional().nullable(),

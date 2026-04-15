@@ -24,7 +24,10 @@ export const TEMPLATES_REGISTRY = [
         safeArea: true,
         glow: false,
         blur: false,
-        shadow: false
+        shadow: false,
+        textBehavior: { mode: 'word_by_word', scrollDirection: 'none' },
+        visualFx: { wordGlow: false, grain: 0, vignette: 0 },
+        cameraMotion: { preset: 'none', intensity: 1 }
     },
     {
         id: 'glow-karaoke',

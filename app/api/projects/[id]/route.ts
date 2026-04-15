@@ -12,7 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
         const scenes = await projectSceneRepository.findByProjectId(id);
-        const host = req.headers.get('host') ? `http://${req.headers.get('host')}` : 'http://localhost:3000';
+        const protocol = req.headers.get('x-forwarded-proto') || 'http';
+        const host = req.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
 
         // Hydrate templates and assets within scenes
         const populatedScenes = await Promise.all(scenes.map(async scene => {
@@ -24,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             let assetUrl = undefined;
             if (scene.backgroundAssetId) {
                 const asset = await backgroundAssetRepository.findById(scene.backgroundAssetId);
-                if (asset) assetUrl = `${host}${asset.publicPath}`;
+                if (asset) assetUrl = `${baseUrl}${asset.publicPath}`;
             }
 
             return { 

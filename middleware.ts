@@ -19,6 +19,12 @@ export function middleware(request: NextRequest) {
 
     // 2. Protect everything else
     if (!session) {
+        if (pathname.startsWith('/api/')) {
+            return new NextResponse(JSON.stringify({ error: 'Unauthorized Session Signal' }), { 
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
