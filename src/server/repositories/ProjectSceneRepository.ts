@@ -42,10 +42,13 @@ export class ProjectSceneRepository {
     private mapRow(row: any): ProjectScene {
         return ProjectSceneSchema.parse({
             ...row,
+            templateId: row.templateId ?? undefined,
+            backgroundAssetId: row.backgroundAssetId ?? undefined,
+            packId: row.packId ?? undefined,
+            visualScore: row.visualScore ?? undefined,
             settings: row.settings ? JSON.parse(row.settings) : {},
         });
     }
 }
 
 export const projectSceneRepository = new ProjectSceneRepository();
-

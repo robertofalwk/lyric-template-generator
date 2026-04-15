@@ -4,6 +4,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { promisify } from 'util';
+import { jobRepository } from '@/src/server/repositories/JobRepository';
 
 const probe = promisify(ffmpeg.ffprobe);
 
@@ -42,12 +43,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             }
         } catch (err: any) {
             console.error('[FFPROBE_ERROR]', err);
-            const isMissing = err.message.includes('spawn') || err.message.includes('not found') || err.message.includes('ENOENT');
-            return NextResponse.json({ 
-                error: isMissing 
-                    ? 'System Error: FFmpeg/ffprobe is not installed on the server. Please check environment dependencies.' 
-                    : `Audio Validation Failure: ${err.message}`
-            }, { status: isMissing ? 500 : 400 });
+            const message = String(err?.message || '');
+            const messageLower = message.toLowerCase();
+            const isMissing = messageLower.includes('spawn') || messageLower.includes('not found') || messageLower.includes('cannot find') || messageLower.includes('enoent');
+            if (!isMissing) {
+                return NextResponse.json({ 
+                    error: `Audio Validation Failure: ${message}`
+                }, { status: 400 });
+            }
         }
 
         const updatedProject = {
@@ -69,10 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         
         await projectSceneRepository.deleteByProjectId(id);
         
-        // Find existing jobs for this project and mark them failed/canceled or just delete them?
-        // Wait, the easiest way is to delete them. There's no deleteByProjectId in JobRepository right now? I will just clear them from DB.
-        const db = (await import('@/src/server/database/db')).default;
-        db.prepare('DELETE FROM jobs WHERE projectId = ?').run(id);
+        await jobRepository.deleteStaleByProjectId(id);
 
         await projectRepository.save(updatedProject);
         return NextResponse.json(updatedProject);

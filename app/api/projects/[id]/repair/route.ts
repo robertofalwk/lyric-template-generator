@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { projectRepository } from '@/src/server/repositories/ProjectRepository';
 import { projectSceneRepository } from '@/src/server/repositories/ProjectSceneRepository';
-import db from '@/src/server/database/db';
+import { jobRepository } from '@/src/server/repositories/JobRepository';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -46,10 +46,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         if (project.alignmentStatus === 'processing' && !stats.timelineOk) {
             // Assume stalled
-            db.prepare('DELETE FROM jobs WHERE projectId = ? AND type = ? AND status IN (?, ?)').run(id, 'alignment', 'queued', 'processing');
+            const deleted = await jobRepository.deleteStaleByProjectId(id, ['alignment']);
             newAlignmentStatus = 'none';
             newStatus = 'draft';
-            stats.repaired.push('Stalled alignment jobs cleared.');
+            stats.repaired.push(`Stalled alignment jobs cleared (${deleted}).`);
         } else if (project.alignmentStatus === 'processing' && stats.timelineOk) {
             newAlignmentStatus = 'completed';
             newStatus = 'ready';
@@ -58,10 +58,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         if (project.renderStatus === 'processing') {
             // Assume stalled
-            db.prepare('DELETE FROM jobs WHERE projectId = ? AND type = ? AND status IN (?, ?)').run(id, 'render', 'queued', 'processing');
+            const deleted = await jobRepository.deleteStaleByProjectId(id, ['render']);
             const updatedProject = { ...project, renderStatus: 'none' as const, alignmentStatus: newAlignmentStatus as any, status: newStatus as any };
             await projectRepository.save(updatedProject);
-            stats.repaired.push('Stalled render jobs cleared.');
+            stats.repaired.push(`Stalled render jobs cleared (${deleted}).`);
         } else if (newAlignmentStatus !== project.alignmentStatus || newStatus !== project.status) {
             const updatedProject = { ...project, alignmentStatus: newAlignmentStatus as any, status: newStatus as any };
             await projectRepository.save(updatedProject);

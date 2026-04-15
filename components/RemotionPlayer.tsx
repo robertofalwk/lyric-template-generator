@@ -31,11 +31,7 @@ export const RemotionPlayerWrapper: React.FC<PlayerProps> = ({ audioSrc, timelin
                         {scenes?.length || 0} Directed Scenes
                     </span>
                 </div>
-                <div className="flex gap-2">
-                    <button className="px-3 py-1 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full text-[9px] font-black uppercase tracking-widest text-zinc-300 hover:text-white transition-all">
-                        Compare (Before/After)
-                    </button>
-                </div>
+                <div />
             </div>
 
             <div className="flex-1 flex items-center justify-center min-h-0">

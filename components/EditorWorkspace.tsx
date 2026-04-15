@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Project, Timeline, Template, ProjectScene } from '@/src/schemas';
 import { TimelineEditor } from './TimelineEditor';
 import { 
-    Paintbrush, AlignLeft, Layers, Sliders, ChevronDown, 
-    Download, Play, FastForward, Film, Type, Star, Sparkles, Image as ImageIcon
+    Paintbrush, AlignLeft, Layers, Sliders,
+    Download, FastForward, Film, Type, Sparkles, Image as ImageIcon
 } from 'lucide-react';
 
 interface EditorWorkspaceProps {
@@ -213,14 +213,6 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
                                                     {(s.startMs / 1000).toFixed(1)}s — {(s.endMs / 1000).toFixed(1)}s
                                                 </span>
                                             </div>
-                                            <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                                <button className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-[9px] font-black uppercase tracking-widest text-zinc-300 rounded-lg">
-                                                    Regenerate
-                                                </button>
-                                                <button className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-[9px] font-black uppercase tracking-widest text-rose-500 rounded-lg">
-                                                    Split
-                                                </button>
-                                            </div>
                                         </div>
                                         
                                         <div className="flex gap-4 pt-4 border-t border-white/5">
@@ -277,28 +269,10 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 flex items-center gap-2">
                                 <ImageIcon size={14}/> Background Art Providers
                             </label>
-                            <div className="flex gap-4 border-b border-white/5 pb-4">
-                                {['My Assets', 'Pexels', 'Unsplash', 'Pixabay'].map(prov => (
-                                    <button 
-                                        key={prov}
-                                        className="px-4 py-2 bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                                    >
-                                        {prov}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {/* Placeholder Assets */}
-                                {[1,2,3,4].map(a => (
-                                    <div key={a} className="aspect-[9/16] bg-zinc-900 rounded-2xl border border-white/5 overflow-hidden relative group">
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-4">
-                                            <span className="text-[8px] text-white font-black uppercase tracking-widest">Asset #{a}</span>
-                                        </div>
-                                        <div className="absolute inset-0 bg-purple-500/20 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                                            <button className="px-4 py-2 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl">Apply</button>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="rounded-2xl border border-white/10 bg-zinc-900/40 p-6">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                                    Asset management moved to the Sidebar Asset Hub. Use that panel to upload and apply assets.
+                                </p>
                             </div>
                         </section>
                     </div>
@@ -324,14 +298,6 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
                                         scene_manifest: scenes.map(s => ({ id: s.id, type: s.sectionType, intensity: s.intensity })) 
                                     }, null, 2)}
                                 </pre>
-                            </div>
-                            <div className="flex gap-4">
-                                <button className="flex-1 py-3 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20">
-                                    Regenerate Visual Intent
-                                </button>
-                                <button className="flex-1 py-3 bg-zinc-800 text-zinc-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-700 hover:text-white transition-all border border-white/5">
-                                    Force Local Fallback
-                                </button>
                             </div>
                         </section>
                     </div>
