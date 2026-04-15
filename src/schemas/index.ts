@@ -69,7 +69,7 @@ export const CameraMotionSchema = z.object({
 });
 
 export const ArtAllocationSchema = z.object({
-    backgroundAssetId: z.string().optional(),
+    backgroundAssetId: z.string().optional().nullable(),
     overlayAssetId: z.string().optional(),
     presetId: z.string().optional(),
     intensity: z.enum(['low', 'medium', 'high']).default('medium'),
@@ -135,7 +135,7 @@ export const TemplateSchema = z.object({
     backgroundOverlayColor: z.string().default('transparent'),
     backgroundOverlayOpacity: z.number().default(0),
     backgroundAssetType: z.enum(['none', 'image', 'video', 'generated']).default('none'),
-    backgroundAssetId: z.string().optional(),
+    backgroundAssetId: z.string().optional().nullable(),
     backgroundPrompt: z.string().optional(),
     backgroundFit: z.enum(['cover', 'contain', 'fill']).default('cover'),
     backgroundPosition: z.string().default('center'),
@@ -224,14 +224,14 @@ export const ProjectSceneSchema = z.object({
     startMs: z.number(),
     endMs: z.number(),
     sectionType: z.enum(['intro', 'verse', 'pre-chorus', 'chorus', 'bridge', 'outro', 'custom']).default('verse'),
-    templateId: z.string().optional(),
-    backgroundAssetId: z.string().optional(),
-    packId: z.string().optional(),
+    templateId: z.string().optional().nullable(),
+    backgroundAssetId: z.string().optional().nullable(),
+    packId: z.string().optional().nullable(),
     intensity: z.enum(['low', 'medium', 'high']).default('medium'),
     transitionIn: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
     transitionOut: z.enum(['fade', 'cut', 'blur', 'zoom', 'slide']).default('fade'),
     settings: z.record(z.string(), z.unknown()).default({}),
-    visualScore: z.number().optional(),
+    visualScore: z.number().optional().nullable(),
     createdAt: z.string(),
 });
 
