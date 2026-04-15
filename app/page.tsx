@@ -5,6 +5,7 @@ import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 import { RemotionPlayerWrapper } from '@/components/RemotionPlayer';
 import { TimelineEditor } from '@/components/TimelineEditor';
+import { EditorWorkspace } from '@/components/EditorWorkspace';
 import { Project, Timeline, RenderJob, Template } from '@/src/schemas';
 import { TEMPLATES_REGISTRY } from '@/src/domains/templates/registry';
 import { 
@@ -357,6 +358,7 @@ export default function Dashboard() {
                             {[
                                 { id: 'hub', icon: LayoutGrid, label: 'Hub' },
                                 { id: 'preview', icon: PlayCircle, label: 'Monitor' },
+                                { id: 'editor', icon: SlidersHorizontal, label: 'Editor' },
                                 { id: 'settings', icon: Settings, label: 'Settings' }
                             ].map(nav => (
                                 <button 
@@ -495,7 +497,7 @@ export default function Dashboard() {
                                             audioSrc={`/api/projects/${project.id}/audio`}
                                             timeline={timeline}
                                             template={activeTemplate}
-                                            scenes={project.scenes}
+                                            scenes={project.scenes || []}
                                         />
                                     </div>
                                 ) : (
@@ -551,6 +553,35 @@ export default function Dashboard() {
                                 )}
                             </div>
                         )}
+
+                        {view === 'editor' && project && timeline && activeTemplate && (
+                            <div className="flex-1 flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
+                                <EditorWorkspace 
+                                    project={project}
+                                    timeline={timeline}
+                                    scenes={project.scenes || []}
+                                    template={activeTemplate}
+                                    onProjectUpdate={async (updates) => {
+                                        const newProj = { ...project, ...updates };
+                                        setProject(newProj);
+                                        await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify(updates), headers: {'Content-Type': 'application/json'} });
+                                    }}
+                                    onTimelineUpdate={async (newTimeline) => {
+                                        setTimeline(newTimeline);
+                                        await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify({ timeline: newTimeline }), headers: {'Content-Type': 'application/json'} });
+                                    }}
+                                    onTemplateUpdate={async (newTemplate) => {
+                                        setActiveTemplate(newTemplate);
+                                        // Update project's selected template maybe? Or just keep it local to Remotion for now
+                                    }}
+                                    onScenesUpdate={async (newScenes) => {
+                                        setProject({ ...project, scenes: newScenes as any });
+                                        await fetch(`/api/projects/${project.id}/scenes`, { method: 'PUT', body: JSON.stringify(newScenes), headers: {'Content-Type': 'application/json'} });
+                                    }}
+                                />
+                            </div>
+                        )}
+
 
                         {view === 'settings' && (
                              <div className="flex-1 overflow-y-auto animate-in slide-in-from-right duration-500 max-w-4xl mx-auto w-full">

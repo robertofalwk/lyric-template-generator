@@ -36,3 +36,22 @@ export async function POST(
     }
 }
 
+export async function PUT(
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await context.params;
+        const newScenes = await req.json();
+        
+        await projectSceneRepository.deleteByProjectId(id);
+        for (const s of newScenes) {
+            await projectSceneRepository.save(s);
+        }
+        
+        return NextResponse.json(newScenes);
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+}
+
