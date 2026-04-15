@@ -31,11 +31,25 @@ export default function Dashboard() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const parseJson = async <T,>(res: Response): Promise<T> => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+            throw new Error((data as any)?.error || `Request failed (${res.status})`);
+        }
+        if (data === null || data === undefined) {
+            throw new Error('Invalid empty response from server');
+        }
+        return data as T;
+    };
+
     const fetchSettings = async () => {
         try {
             const res = await fetch('/api/settings');
-            setAppSettings(await res.json());
-        } catch (e) {}
+            const data = await parseJson<Record<string, string>>(res);
+            setAppSettings(data);
+        } catch (e: any) {
+            setStatusMsg(`Settings load failed: ${e.message}`);
+        }
     };
 
     const saveSettings = async (newSettings: Record<string, string>) => {
@@ -47,7 +61,7 @@ export default function Dashboard() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newSettings)
                 });
-                const testData = await testRes.json();
+                const testData = await parseJson<any>(testRes);
                 if (!testData.success) {
                     alert(`Cannot save. OpenAI Test Failed: ${testData.error}`);
                     setTestResult(testData);
@@ -61,13 +75,12 @@ export default function Dashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newSettings)
             });
-            if (res.ok) {
-                await fetchSettings();
-                await fetchHealth();
-                alert('Settings saved successfully');
-            }
-        } catch (e) {
-            alert('Failed to save settings');
+            await parseJson(res);
+            await fetchSettings();
+            await fetchHealth();
+            alert('Settings saved successfully');
+        } catch (e: any) {
+            alert(`Failed to save settings: ${e.message}`);
         } finally {
             setIsSavingSettings(false);
         }
@@ -77,7 +90,7 @@ export default function Dashboard() {
         if (!project?.id) return;
         try {
             const res = await fetch(`/api/projects/${project.id}/jobs`);
-            const jobs: any[] = await res.json();
+            const jobs = await parseJson<any[]>(res);
             const completedRenders = jobs.filter((j: any) => j.type === 'render' && j.status === 'completed');
             if (completedRenders.length > 0) {
                 completedRenders.sort((a,b) => new Date(b.finishedAt!).getTime() - new Date(a.finishedAt!).getTime());
@@ -85,7 +98,9 @@ export default function Dashboard() {
             } else {
                 setLatestRenderJob(null);
             }
-        } catch (e) {}
+        } catch (e: any) {
+            setStatusMsg(`Render jobs load failed: ${e.message}`);
+        }
     }, [project?.id]);
 
     useEffect(() => {
@@ -100,7 +115,7 @@ export default function Dashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(appSettings)
             });
-            const data = await res.json();
+            const data = await parseJson<{ success?: boolean; error?: string }>(res);
             setTestResult(data);
         } catch (error: any) {
             setTestResult({ success: false, error: error.message });
@@ -110,17 +125,21 @@ export default function Dashboard() {
     const fetchHealth = async () => {
         try {
             const res = await fetch('/api/health');
-            const data = await res.json();
+            const data = await parseJson<any>(res);
             setHealth(data);
-        } catch (e) {}
+        } catch (e: any) {
+            setStatusMsg(`Health check failed: ${e.message}`);
+        }
     };
 
     const fetchProjects = async () => {
         try {
             const res = await fetch('/api/projects');
-            const data = await res.json();
+            const data = await parseJson<Project[]>(res);
             setProjects(data);
-        } catch (e) {}
+        } catch (e: any) {
+            setStatusMsg(`Projects load failed: ${e.message}`);
+        }
     };
 
     useEffect(() => {
@@ -146,11 +165,12 @@ export default function Dashboard() {
                     setActiveTemplate(stock);
                 } else {
                     const tRes = await fetch(`/api/templates/${data.selectedTemplateId}`);
-                    if (tRes.ok) setActiveTemplate(await tRes.json());
+                    const selected = await parseJson<Template>(tRes);
+                    setActiveTemplate(selected);
                 }
             }
             setView('preview');
-        } catch (e) { alert('Hydration Error'); } finally { setIsProcessing(false); }
+        } catch (e: any) { alert(`Hydration Error: ${e.message}`); } finally { setIsProcessing(false); }
     };
 
     const handleCreateProject = async (title: string, lyrics: string) => {
@@ -349,10 +369,12 @@ export default function Dashboard() {
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ selectedTemplateId: t.id })
                                 });
-                                const updated = await res.json();
+                                const updated = await parseJson<Project>(res);
                                 setProject(updated);
                                 fetchProjects();
-                            } catch (e) {}
+                            } catch (e: any) {
+                                alert(`Template selection failed: ${e.message}`);
+                            }
                         }
                     }}
                     activeTemplateId={activeTemplate?.id}
@@ -418,7 +440,7 @@ export default function Dashboard() {
                                                 body: JSON.stringify({ presetId: 'v7_premium_master', formats: ['mp4_h264'], customTemplate: activeTemplate })
                                             });
                                             if (!res.ok) {
-                                                const err = await res.json();
+                                                const err = await res.json().catch(() => ({}));
                                                 const issuesStr = err.issues ? '\nBlocking Issues:\n' + err.issues.map((i: any) => `* ${i.message}`).join('\n') : '';
                                                 throw new Error(`${err.error || 'Render err'}${issuesStr}`);
                                             }
@@ -469,14 +491,6 @@ export default function Dashboard() {
                                     <div className="flex flex-col gap-3">
                                         <div className="flex justify-between items-center">
                                             <h2 className="text-3xl font-black tracking-tighter">Production Archive</h2>
-                                            <div className="flex gap-2">
-                                                <button className="px-4 py-2 bg-zinc-900 border border-white/10 hover:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white rounded-xl transition-all">
-                                                    Batch Render
-                                                </button>
-                                                <button className="px-4 py-2 bg-purple-600/20 border border-purple-500/50 text-purple-400 hover:bg-purple-600 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
-                                                    Marketplace
-                                                </button>
-                                            </div>
                                         </div>
                                         <p className="text-[12px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{projects.length} Active Workspace Nodes</p>
                                     </div>
@@ -504,12 +518,6 @@ export default function Dashboard() {
                                                         <span>•</span>
                                                         <span>Score {p.lastVisualScore || 0}%</span>
                                                     </div>
-                                                    <button 
-                                                        className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-md text-[8px]"
-                                                        onClick={(e) => { e.stopPropagation(); alert('Duplicate project triggered') }}
-                                                    >
-                                                        Clone
-                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -591,27 +599,38 @@ export default function Dashboard() {
                                     scenes={project.scenes || []}
                                     template={activeTemplate}
                                     onProjectUpdate={async (updates) => {
-                                        const newProj = { ...project, ...updates };
-                                        setProject(newProj);
-                                        const res = await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify(updates), headers: {'Content-Type': 'application/json'} });
-                                        if (res.ok) {
-                                            const savedData = await res.json();
-                                            if (savedData && !savedData.error) setProject(savedData);
-                                        } else {
-                                            alert('Settings update failed.');
+                                        try {
+                                            const newProj = { ...project, ...updates };
+                                            setProject(newProj);
+                                            const res = await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify(updates), headers: {'Content-Type': 'application/json'} });
+                                            const savedData = await parseJson<Project>(res);
+                                            setProject(savedData);
+                                        } catch (e: any) {
+                                            alert(`Settings update failed: ${e.message}`);
                                         }
                                     }}
                                     onTimelineUpdate={async (newTimeline) => {
-                                        setTimeline(newTimeline);
-                                        await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify({ timeline: newTimeline }), headers: {'Content-Type': 'application/json'} });
+                                        try {
+                                            setTimeline(newTimeline);
+                                            const res = await fetch(`/api/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify({ timeline: newTimeline }), headers: {'Content-Type': 'application/json'} });
+                                            const savedData = await parseJson<Project>(res);
+                                            setProject(savedData);
+                                        } catch (e: any) {
+                                            alert(`Timeline update failed: ${e.message}`);
+                                        }
                                     }}
                                     onTemplateUpdate={async (newTemplate) => {
                                         setActiveTemplate(newTemplate);
                                         // Update project's selected template maybe? Or just keep it local to Remotion for now
                                     }}
                                     onScenesUpdate={async (newScenes) => {
-                                        setProject({ ...project, scenes: newScenes as any });
-                                        await fetch(`/api/projects/${project.id}/scenes`, { method: 'PUT', body: JSON.stringify(newScenes), headers: {'Content-Type': 'application/json'} });
+                                        try {
+                                            setProject({ ...project, scenes: newScenes as any });
+                                            const res = await fetch(`/api/projects/${project.id}/scenes`, { method: 'PUT', body: JSON.stringify(newScenes), headers: {'Content-Type': 'application/json'} });
+                                            await parseJson<any[]>(res);
+                                        } catch (e: any) {
+                                            alert(`Scenes update failed: ${e.message}`);
+                                        }
                                     }}
                                 />
                             </div>

@@ -44,6 +44,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const [isUploading, setIsUploading] = useState(false);
     const [aiStatus, setAiStatus] = useState<'idle' | 'interpreting' | 'fallback'>('idle');
 
+    const parseJson = async <T,>(res: Response): Promise<T> => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+            throw new Error((data as any)?.error || `Request failed (${res.status})`);
+        }
+        return (data ?? []) as T;
+    };
+
     useEffect(() => {
         if (currentProject) {
             setTitle(currentProject.title || '');
@@ -68,9 +76,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const fetchAssets = async () => {
         try {
             const res = await fetch('/api/backgrounds');
-            const data = await res.json();
+            const data = await parseJson<BackgroundAsset[]>(res);
             setAssets(Array.isArray(data) ? data : []);
-        } catch (e) {
+        } catch (e: any) {
+            console.error('Failed to load assets:', e.message);
             setAssets([]);
         }
     };
@@ -78,25 +87,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const fetchTemplates = async () => {
         try {
             const res = await fetch('/api/templates');
-            const data = await res.json();
+            const data = await parseJson<Template[]>(res);
             setTemplates(Array.isArray(data) ? data : []);
-        } catch (e) {}
+        } catch (e: any) {
+            console.error('Failed to load templates:', e.message);
+        }
     };
 
     const fetchComments = async () => {
         if (!currentProject) return;
         try {
             const res = await fetch(`/api/projects/${currentProject.id}/comments`);
-            setComments(await res.json());
-        } catch (e) {}
+            setComments(await parseJson<ProjectComment[]>(res));
+        } catch (e: any) {
+            console.error('Failed to load comments:', e.message);
+        }
     };
 
     const fetchJobs = async () => {
         if (!currentProject) return;
         try {
             const res = await fetch(`/api/projects/${currentProject.id}/jobs`);
-            setJobs(await res.json());
-        } catch (e) {}
+            setJobs(await parseJson<any[]>(res));
+        } catch (e: any) {
+            console.error('Failed to load jobs:', e.message);
+        }
     };
 
     const handleAIGenerate = async () => {
@@ -138,11 +153,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentTemplate, prompt: refinePrompt })
             });
-            const refined = await res.json();
+            const refined = await parseJson<Template>(res);
             onTemplateSelect(refined);
             setRefinePrompt('');
             setAiStatus(res.headers.get('X-TemplateAI-Fallback') ? 'fallback' : 'idle');
-        } catch (error) { setAiStatus('fallback'); } finally { setIsRefining(false); }
+        } catch (error: any) {
+            setAiStatus('fallback');
+            alert(`Template refine failed: ${error.message}`);
+        } finally { setIsRefining(false); }
     };
 
     const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

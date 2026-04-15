@@ -16,9 +16,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
             return new NextResponse('Job not completed or output path missing', { status: 400 });
         }
 
-        // Job outputPath is like /exports/jobId.mp4
-        // We find it in the public folder.
-        const filePath = path.join(process.cwd(), 'public', job.outputPath);
+        const normalizedOutputPath = job.outputPath.replace(/^\/+/, '');
+        const filePath = path.join(process.cwd(), 'public', normalizedOutputPath);
 
         try {
             const fileBuffer = await readFile(filePath);

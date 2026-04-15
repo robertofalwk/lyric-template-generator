@@ -47,6 +47,19 @@ export class JobRepository {
         return rows.map(this.mapRowToJob);
     }
 
+    async deleteStaleByProjectId(projectId: string, types: RenderJob['type'][] = ['alignment', 'render']): Promise<number> {
+        if (!types.length) return 0;
+        const placeholders = types.map(() => '?').join(', ');
+        const stmt = db.prepare(
+            `DELETE FROM render_jobs 
+             WHERE projectId = ? 
+               AND type IN (${placeholders}) 
+               AND status IN ('queued', 'processing')`
+        );
+        const result = stmt.run(projectId, ...types);
+        return result.changes;
+    }
+
     async claimNextQueued(): Promise<RenderJob | null> {
         const row = db.transaction(() => {
             const next = db.prepare("SELECT * FROM render_jobs WHERE status = 'queued' LIMIT 1").get() as any;
