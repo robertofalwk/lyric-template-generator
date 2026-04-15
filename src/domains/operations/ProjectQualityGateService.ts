@@ -34,7 +34,7 @@ export class ProjectQualityGateService {
         // 3. Logic Gaps
         const gaps = this.detectGaps(scenes);
         if (gaps.length > 0) {
-            issues.push({ severity: 'blocking', message: 'Chronological gaps detected in scene timeline', category: 'logic' });
+            issues.push({ severity: 'warning', message: 'Chronological gaps detected in scene timeline', category: 'logic' });
         }
 
         return {

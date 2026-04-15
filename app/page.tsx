@@ -357,7 +357,6 @@ export default function Dashboard() {
                             {[
                                 { id: 'hub', icon: LayoutGrid, label: 'Hub' },
                                 { id: 'preview', icon: PlayCircle, label: 'Monitor' },
-                                { id: 'editor', icon: SlidersHorizontal, label: 'Editor' },
                                 { id: 'settings', icon: Settings, label: 'Settings' }
                             ].map(nav => (
                                 <button 
@@ -388,7 +387,7 @@ export default function Dashboard() {
                             <div className="flex gap-2">
                                 {latestRenderJob && (
                                     <a 
-                                        href={latestRenderJob.outputPath || '#'}
+                                        href={`/api/jobs/${latestRenderJob.id}/download`}
                                         download
                                         className="px-4 py-2 border border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center gap-2 transition-all text-[10px] font-black uppercase tracking-wider"
                                     >
@@ -637,6 +636,52 @@ export default function Dashboard() {
                                               </div>
                                           </div>
                                       </section>
+
+                                      {project && (
+                                          <section className="flex flex-col gap-8 pb-12">
+                                              <div className="flex items-center justify-between">
+                                                  <label className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-600">Project Health Diagnostics</label>
+                                                  <button 
+                                                      onClick={async () => {
+                                                          try {
+                                                              setIsProcessing(true);
+                                                              const res = await fetch(`/api/projects/${project.id}/repair`, { method: 'POST' });
+                                                              const data = await res.json();
+                                                              if (data.success) {
+                                                                  alert(`Repair Success:\nAudio: ${data.stats.audioOk}\nTimeline: ${data.stats.timelineOk}\nScenes: ${data.stats.scenesOk}\nTemplate: ${data.stats.templateOk}\n\nActions:\n${data.stats.repaired.join('\n')}`);
+                                                                  const latestRes = await fetch(`/api/projects/${project.id}`);
+                                                                  setProject(await latestRes.json());
+                                                              } else { throw new Error(data.error); }
+                                                          } catch (e: any) { alert(`Repair Failed: ${e.message}`); } finally { setIsProcessing(false); }
+                                                      }}
+                                                      disabled={isProcessing}
+                                                      className="px-6 py-2 bg-rose-600/10 border border-rose-500/30 text-rose-500 hover:bg-rose-500 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
+                                                  >
+                                                      Repair Project State
+                                                  </button>
+                                              </div>
+                                              
+                                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                  {[
+                                                      { prop: 'audioOriginalPath', label: 'Audio Upload' },
+                                                      { prop: 'timeline', label: 'Timeline Alignment' },
+                                                      { prop: 'scenes', label: 'Director Scenes', customCheck: (p: any) => p?.scenes?.length > 0 },
+                                                      { prop: 'selectedTemplateId', label: 'Template Selected' },
+                                                  ].map(st => {
+                                                      const ok = st.customCheck ? st.customCheck(project) : !!(project as any)[st.prop];
+                                                      return (
+                                                          <div key={st.label} className="p-5 rounded-2xl bg-zinc-900 border border-white/5 flex flex-col gap-2">
+                                                              <div className="flex justify-between items-center">
+                                                                  <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{st.label}</span>
+                                                                  {ok ? <CheckCircle2 size={14} className="text-emerald-500"/> : <AlertCircle size={14} className="text-rose-500"/>}
+                                                              </div>
+                                                              <span className={`text-xs font-bold ${ok ? 'text-zinc-300' : 'text-zinc-600'}`}>{ok ? 'OK' : 'MISSING'}</span>
+                                                          </div>
+                                                      );
+                                                  })}
+                                              </div>
+                                          </section>
+                                      )}
                                  </div>
                              </div>
                         )}

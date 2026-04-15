@@ -607,7 +607,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                 )}
                                             </div>
                                             {j.status === 'completed' ? (
-                                                <a href={j.outputPath} download className="p-3 bg-zinc-950 text-emerald-500 rounded-xl shadow-lg hover:scale-110 transition-all flex items-center gap-2 text-[10px] uppercase font-black tracking-widest">
+                                                <a href={`/api/jobs/${j.id}/download`} download className="p-3 bg-zinc-950 text-emerald-500 rounded-xl shadow-lg hover:scale-110 transition-all flex items-center gap-2 text-[10px] uppercase font-black tracking-widest">
                                                     <Download size={14}/> Download
                                                 </a>
                                             ) : (
