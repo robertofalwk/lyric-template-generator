@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         // Find existing jobs for this project and mark them failed/canceled or just delete them?
         // Wait, the easiest way is to delete them. There's no deleteByProjectId in JobRepository right now? I will just clear them from DB.
         const db = (await import('@/src/server/database/db')).default;
-        db.prepare('DELETE FROM jobs WHERE projectId = ?').run(id);
+        db.prepare('DELETE FROM render_jobs WHERE projectId = ?').run(id);
 
         await projectRepository.save(updatedProject);
         return NextResponse.json(updatedProject);

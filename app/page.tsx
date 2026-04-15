@@ -34,7 +34,9 @@ export default function Dashboard() {
     const fetchSettings = async () => {
         try {
             const res = await fetch('/api/settings');
-            setAppSettings(await res.json());
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && !data.error) setAppSettings(data);
         } catch (e) {}
     };
 
@@ -110,17 +112,29 @@ export default function Dashboard() {
     const fetchHealth = async () => {
         try {
             const res = await fetch('/api/health');
+            if (!res.ok) {
+                console.warn('Health check failed signal.');
+                return;
+            }
             const data = await res.json();
-            setHealth(data);
-        } catch (e) {}
+            if (data && !data.error) setHealth(data);
+        } catch (e) {
+            console.error('Failed to fetch health node');
+        }
     };
 
     const fetchProjects = async () => {
         try {
             const res = await fetch('/api/projects');
+            if (!res.ok) {
+                console.warn('Failed to fetch project archive.');
+                return;
+            }
             const data = await res.json();
-            setProjects(data);
-        } catch (e) {}
+            if (Array.isArray(data)) setProjects(data);
+        } catch (e) {
+            console.error('Project archive heartbeat failed');
+        }
     };
 
     useEffect(() => {

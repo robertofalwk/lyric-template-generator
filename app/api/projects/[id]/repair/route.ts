@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         if (project.alignmentStatus === 'processing' && !stats.timelineOk) {
             // Assume stalled
-            db.prepare('DELETE FROM jobs WHERE projectId = ? AND type = ? AND status IN (?, ?)').run(id, 'alignment', 'queued', 'processing');
+            db.prepare('DELETE FROM render_jobs WHERE projectId = ? AND type = ? AND status IN (?, ?)').run(id, 'alignment', 'queued', 'processing');
             newAlignmentStatus = 'none';
             newStatus = 'draft';
             stats.repaired.push('Stalled alignment jobs cleared.');
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         if (project.renderStatus === 'processing') {
             // Assume stalled
-            db.prepare('DELETE FROM jobs WHERE projectId = ? AND type = ? AND status IN (?, ?)').run(id, 'render', 'queued', 'processing');
+            db.prepare('DELETE FROM render_jobs WHERE projectId = ? AND type = ? AND status IN (?, ?)').run(id, 'render', 'queued', 'processing');
             const updatedProject = { ...project, renderStatus: 'none' as const, alignmentStatus: newAlignmentStatus as any, status: newStatus as any };
             await projectRepository.save(updatedProject);
             stats.repaired.push('Stalled render jobs cleared.');
